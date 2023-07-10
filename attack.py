@@ -9,7 +9,6 @@ import functools
 from itertools import product
 import tropical_algebra
 import matrix_tools
-import simplex
 import scipy.optimize
 
 
