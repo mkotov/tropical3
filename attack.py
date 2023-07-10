@@ -10,31 +10,7 @@ from itertools import product
 import tropical_algebra
 import matrix_tools
 import simplex
-
-
-def make_simplex_matrix(F, D, h):
-    """Retruns the simpex-table constructed by a set of covers and a fixed cover."""
-    A = [[0] * (2 * (D + 1) + (D + 1)**2 + 1) for _ in range((D + 1)**2 + 1)]
-
-    for i in range(D + 1):
-        for j in range(D + 1):
-            A[i * (D + 1) + j][i] = 1
-            A[i * (D + 1) + j][(D + 1) + j] = 1
-
-    for S in F:
-        A[S['ijminval'][0]['i'] * (D + 1) + S['ijminval'][0]['j']
-          ][2 * (D + 1) + (D + 1)**2] = -S['ijminval'][0]['val']
-    for i in range((D + 1)**2):
-        A[i][2 * (D + 1) + i] = -1
-    for S in h:
-        A[S[0] * (D + 1) + S[1]][2 * (D + 1) + S[0] * (D + 1) + S[1]] = 0
-    for i in range(len(A[0])):
-        S = 0
-        for j in range(len(A) - 1):
-            S += A[j][i]
-        A[(D + 1)**2][i] = -S
-
-    return A
+import scipy.optimize
 
 
 def compress(G):
@@ -71,7 +47,7 @@ def get_compressed_covers(F):
         [T['inds'] for T in filter(lambda T: S != T, Z)]))) != 0, Z))
     N = unite_sets([S['inds'] for S in M])
     P = compress(list(filter(lambda S: len(S['inds']) != 0, [
-            {'ijminval': S['ijminval'], 'inds': S['inds'].difference(N)} for S in Z])))
+        {'ijminval': S['ijminval'], 'inds': S['inds'].difference(N)} for S in Z])))
     if len(P) > 0:
         P.sort(key=lambda S: len(S['inds']), reverse=True)
         return [M + S for S in [[P[0]] +
@@ -80,23 +56,46 @@ def get_compressed_covers(F):
 
     return [M]
 
-def apply_attack(D, compute_base_element, extract_solution, heuristics_to_sort):
-    """Applies our attack. Returns two polynomials p' and q'."""
-    def repack(ij, m):
-        return {'ijminval': [{'i': ij[0], 'j': ij[1], 'val': m['val']}], 'inds': m['inds']}
 
-    F = list(filter(lambda S: S['ijminval'][0]['val'] <= 0,
-                    map(lambda ij: repack(ij, matrix_tools.get_minimum_of_matrix(
-                        compute_base_element(ij[0], ij[1]))),
-                        product(range(D + 1), range(D + 1)))))
-    G = get_compressed_covers(F)
+def make_matrices_for_simplex(M, S, d1, d2):
+    """Returns matrices for simplex method."""
+    c = [0 for _ in range(d1 + d2)]
+    Aub = []
+    bub = []
+    Aeq = []
+    beq = []
+
+    def vecij(i, j):
+        v = [0 for _ in range(d1 + d2)]
+        v[i] = -1
+        v[d1 + j] = -1
+        return v
+    for i in range(d1):
+        for j in range(d2):
+            if (i, j) in S:
+                Aeq.append(vecij(i, j))
+                beq.append(M[(i, j)]['val'])
+            else:
+                Aub.append(vecij(i, j))
+                bub.append(M[(i, j)]['val'])
+    return c, Aub, bub, Aeq, beq
+
+
+def apply_attack(d1, d2, compute_base_element, heuristics_to_sort):
+    """Applies our attack. Returns two polynomials p' and q'."""
+    M = {(i, j): matrix_tools.get_minimum_of_matrix(compute_base_element(i, j))
+         for i in range(d1) for j in range(d2)}
+
+    def repack(i, j, m):
+        return {'ijminval': [{'i': i, 'j': j, 'val': m['val']}], 'inds': m['inds']}
+    G = get_compressed_covers([repack(m[0], m[1], M[m]) for m in M])
     H = unite_sets(
         [set(product(*[[(c['i'], c['j']) for c in T['ijminval']] for T in S])) for S in G])
     H = sorted(H, key=heuristics_to_sort, reverse=True)
-    print(H)
     for S in H:
-        T = simplex.apply_simplex(make_simplex_matrix(F, D, S))
-        if T is not None:
-            return extract_solution([T[i] for i in range(D + 1)], [T[D + 1 + i] for i in range(D + 1)])
-
+        c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
+        T = scipy.optimize.linprog(
+            c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=(None, None))
+        if T.success:
+            return [[T.x[i] for i in range(d1)], [T.x[d1 + i] for i in range(d2)]]
     return None
