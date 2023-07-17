@@ -9,6 +9,7 @@ import matrix_tools
 import attack
 import test_tools
 import random
+import argparse
 
 
 def perform_one_experiment(instance_params, attack_params):
@@ -82,16 +83,57 @@ def perform_one_experiment(instance_params, attack_params):
     return test_tools.perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key)
 
 
-R = tropical_algebra.MatrixSemiring(tropical_algebra.R_min_plus(), 15)
-test_tools.test_suite(perform_one_experiment,
-                      {
-                          "ring": R,
-                          "min_matrix_elem": -10000,
-                          "max_matrix_elem": 10000
-                      },
-                      {
-                          "ring": R,
-                          "min_matrix_elem": -10000,
-                          "max_matrix_elem": 10000
-                      },
-                      10, 60)
+def get_arguments_parser():
+    parser = argparse.ArgumentParser(
+        description="The script to check the attack.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument(
+        "--count",
+        help="Number of tests",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--size",
+        help="Size of matrices",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--timeout",
+        help="Timeout for each experiment",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--min_matrix_elem",
+        help="Lower bound to generate elements of matrices",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--max_matrix_elem",
+        help="Upper bound to generate elements of matrices",
+        required=True,
+        type=int
+    )
+
+    return parser
+
+
+if __name__ == "__main__":
+    args = get_arguments_parser().parse_args()
+    R = tropical_algebra.MatrixSemiring(
+        tropical_algebra.R_min_plus(), args.size)
+    test_tools.test_suite(perform_one_experiment,
+                          {
+                              "ring": R,
+                              "min_matrix_elem": args.min_matrix_elem,
+                              "max_matrix_elem": args.max_matrix_elem,
+                          },
+                          {
+                              "ring": R,
+                              "min_matrix_elem": args.min_matrix_elem,
+                              "max_matrix_elem": args.max_matrix_elem,
+                          },
+                          args.count, args.timeout)

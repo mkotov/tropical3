@@ -82,9 +82,6 @@ def perform_one_experiment(instance_params, attack_params):
 
 
 def get_arguments_parser():
-    """
-    Creates arguments parser with necessary options.
-    """
     parser = argparse.ArgumentParser(
         description="The script to check the attack.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -154,7 +151,8 @@ def get_arguments_parser():
 
 if __name__ == "__main__":
     args = get_arguments_parser().parse_args()
-    R = tropical_algebra.MatrixSemiring(tropical_algebra.R_min_plus(), args.size)
+    R = tropical_algebra.MatrixSemiring(
+        tropical_algebra.R_min_plus(), args.size)
     test_tools.test_suite(perform_one_experiment,
                           {
                               "ring": R,
