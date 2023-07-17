@@ -37,23 +37,32 @@ def unite_sets(ss):
     return set.union(*ss)
 
 
+def get_sets_with_unique_elements(Z):
+    """Returns sets that has unique elements."""
+    return list(filter(lambda S: len(S['inds'].difference(unite_sets([T['inds'] for T in filter(lambda T: S != T, Z)]))) != 0, Z))
+
+
+def get_sets_without_elements(Z, N):
+    return list(filter(lambda S: len(S['inds']) != 0, [{'ijminval': S['ijminval'], 'inds': S['inds'].difference(N)} for S in Z]))
+
+
 def get_compressed_covers(F):
-    """Returns the compressed set of covers. This set contains all the minimal covers."""
+    """Returns the compressed set of covers."""
     if len(F) == 0:
         return [[]]
     Z = compress(F)
-    M = list(filter(lambda S: len(S['inds'].difference(unite_sets(
-        [T['inds'] for T in filter(lambda T: S != T, Z)]))) != 0, Z))
-    N = unite_sets([S['inds'] for S in M])
-    P = compress(list(filter(lambda S: len(S['inds']) != 0, [
-        {'ijminval': S['ijminval'], 'inds': S['inds'].difference(N)} for S in Z])))
-    if len(P) > 0:
-        P.sort(key=lambda S: len(S['inds']), reverse=True)
-        return [M + S for S in [[P[0]] +
-                                S for S in get_compressed_covers(list(filter(lambda S: len(S['inds']) != 0, [{'ijminval': S['ijminval'], 'inds': S['inds'].difference(P[0]['inds'])} for S in P])))] +
-                get_compressed_covers(P[1:])]
+    M = get_sets_with_unique_elements(Z)
+    P = get_sets_without_elements(Z, unite_sets([S['inds'] for S in M]))
+    P.sort(key=lambda S: len(S['inds']), reverse=True)
 
-    return [M]
+    if len(P) == 0:
+        return [M]
+
+    X = [[P[0]] + S for S in get_compressed_covers(
+        get_sets_without_elements(P[1:], P[0]['inds']))]
+    Y = get_compressed_covers(P[1:])
+
+    return [M + S for S in X + Y]
 
 
 def make_matrices_for_simplex(M, S, d1, d2):
@@ -82,15 +91,17 @@ def make_matrices_for_simplex(M, S, d1, d2):
 
 def apply_attack(d1, d2, compute_base_element, heuristics_to_sort, bounds=(None, None)):
     """Applies our attack. Returns two polynomials p' and q'."""
-    M = {(i, j): matrix_tools.get_minimum_of_matrix(compute_base_element(i, j))
-         for i in range(d1) for j in range(d2)}
     def repack(i, j, m):
         return {'ijminval': [{'i': i, 'j': j, 'val': m['val']}], 'inds': m['inds']}
+
     def check_bound(m):
         return not bounds[0] or M[m]['val'] <= -2 * bounds[0]
-    G = get_compressed_covers([repack(m[0], m[1], M[m]) for m in filter(check_bound, M)])
-    H = unite_sets(
-        [set(product(*[[(c['i'], c['j']) for c in T['ijminval']] for T in S])) for S in G])
+
+    M = {(i, j): matrix_tools.get_minimum_of_matrix(compute_base_element(i, j))
+         for i in range(d1) for j in range(d2)}
+    N = [repack(m[0], m[1], M[m]) for m in filter(check_bound, M)]
+    G = get_compressed_covers(N)
+    H = unite_sets([set(product(*[[(c['i'], c['j']) for c in T['ijminval']] for T in S])) for S in G])
     H = sorted(H, key=heuristics_to_sort, reverse=True)
     for S in H:
         c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
