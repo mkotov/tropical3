@@ -3,6 +3,7 @@
 """
 
 import time
+import multiprocessing
 
 def perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key):
     """Runs one experiment: generates an instance, runs an attack, and check the obtained key."""
@@ -18,13 +19,24 @@ def perform_one_experiment(instance_params, attack_params, generate_instance, ru
     return check_key(instance_params, instance, result)
 
 
-def test_suite(perform_one_experiment, instance_params, attack_params, number_of_tests):
+
+
+def test_suite(perform_one_experiment, instance_params, attack_params, number_of_tests, timeout):
     """Runs a set of tests."""
     st = time.time()
     ok = 0
     fl = 0
     for i in range(1, number_of_tests + 1):
-        if perform_one_experiment(instance_params, attack_params):
+        q = multiprocessing.Queue()
+        p = multiprocessing.Process(target=lambda q : q.put(perform_one_experiment(instance_params, attack_params)), args=(q,))
+        p.start()
+        p.join(timeout)
+        if p.is_alive():
+            print("TIMEOUT")
+            p.terminate()
+            p.join()
+            fl += 1
+        elif q.get():
             print("OK")
             ok += 1
         else:

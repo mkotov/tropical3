@@ -9,6 +9,7 @@ import matrix_tools
 import attack
 import test_tools
 import random
+import argparse
 
 
 def perform_one_experiment(instance_params, attack_params):
@@ -80,17 +81,91 @@ def perform_one_experiment(instance_params, attack_params):
     return test_tools.perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key)
 
 
-R = tropical_algebra.MatrixSemiring(tropical_algebra.R_min_plus(), 10)
-test_tools.test_suite(perform_one_experiment,
-                      {
-                          "ring": R,
-                          "min_matrix_elem": -100000,
-                          "max_matrix_elem": 100000,
-                          "min_poly_deg": 5,
-                          "max_poly_deg": 25,
-                          "min_poly_coef": -100000,
-                          "max_poly_coef": 100000},
-                      {
-                          "ring": R,
-                          "poly_deg_bound": 25},
-                      10)
+def get_arguments_parser():
+    """
+    Creates arguments parser with necessary options.
+    """
+    parser = argparse.ArgumentParser(
+        description="The script to check the attack.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument(
+        "--count",
+        help="Number of tests",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--size",
+        help="Size of matrices",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--timeout",
+        help="Timeout for each experiment",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--min_matrix_elem",
+        help="Lower bound to generate elements of matrices",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--max_matrix_elem",
+        help="Upper bound to generate elements of matrices",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--min_poly_deg",
+        help="Lower bound to generate polynomial degrees",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--max_poly_deg",
+        help="Upper bound to generate polynomial degrees",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--min_poly_coef",
+        help="Lower bound to generate polynomial coefficients",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--max_poly_coef",
+        help="Upper bound to generate polynomial coefficients",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--poly_deg_bound",
+        help="Upper bound for polynomial degrees, this is a parameter of the attack",
+        required=True,
+        type=int
+    )
+
+    return parser
+
+
+if __name__ == "__main__":
+    args = get_arguments_parser().parse_args()
+    R = tropical_algebra.MatrixSemiring(tropical_algebra.R_min_plus(), args.size)
+    test_tools.test_suite(perform_one_experiment,
+                          {
+                              "ring": R,
+                              "min_matrix_elem": args.min_matrix_elem,
+                              "max_matrix_elem": args.max_matrix_elem,
+                              "min_poly_deg": args.min_poly_deg,
+                              "max_poly_deg": args.max_poly_deg,
+                              "min_poly_coef": args.min_poly_coef,
+                              "max_poly_coef": args.max_poly_coef},
+                          {
+                              "ring": R,
+                              "poly_deg_bound": args.poly_deg_bound
+                          },
+                          args.count, args.timeout)

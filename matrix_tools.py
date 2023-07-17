@@ -61,7 +61,7 @@ def generate_basis_upper_t_circulant_matrix(R, t, k):
 
 def generate_random_polynomial(D, pm, pM):
     """Generates a random polynomial p in ZZ[x] of degree d, d in [1, D], p_i in [pm, pM]."""
-    return [random.randint(pm, pM) for i in range(random.randint(1, D) + 1)]
+    return [random.randint(pm, pM) for i in range(random.randint(D, D) + 1)]
 
 
 def minus_matrix_from_matrix(A, B):

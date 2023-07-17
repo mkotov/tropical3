@@ -80,21 +80,25 @@ def make_matrices_for_simplex(M, S, d1, d2):
     return c, Aub, bub, Aeq, beq
 
 
-def apply_attack(d1, d2, compute_base_element, heuristics_to_sort):
+def apply_attack(d1, d2, compute_base_element, heuristics_to_sort, bounds=(None, None)):
     """Applies our attack. Returns two polynomials p' and q'."""
     M = {(i, j): matrix_tools.get_minimum_of_matrix(compute_base_element(i, j))
          for i in range(d1) for j in range(d2)}
-
+    print(len(M))
     def repack(i, j, m):
         return {'ijminval': [{'i': i, 'j': j, 'val': m['val']}], 'inds': m['inds']}
-    G = get_compressed_covers([repack(m[0], m[1], M[m]) for m in M])
+    def check_bound(m):
+        return not bounds[0] or M[m]['val'] <= -2 * bounds[0]
+    G = get_compressed_covers([repack(m[0], m[1], M[m]) for m in filter(check_bound, M)])
+    print(len(G))
     H = unite_sets(
         [set(product(*[[(c['i'], c['j']) for c in T['ijminval']] for T in S])) for S in G])
     H = sorted(H, key=heuristics_to_sort, reverse=True)
+    print(len(H))
     for S in H:
         c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
         T = scipy.optimize.linprog(
-            c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=(None, None))
+            c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=bounds)
         if T.success:
             return [[T.x[i] for i in range(d1)], [T.x[d1 + i] for i in range(d2)]]
     return None
