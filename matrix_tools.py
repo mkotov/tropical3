@@ -43,7 +43,7 @@ def generate_upper_t_circulant_matrix(R, array, t):
 
 
 def generate_basis_upper_t_circulant_matrix(R, t, k):
-    """Generates an upper-t-circulant matrix of size n x n."""
+    """Generates k-th basis upper-t-circulant matrix of size n x n."""
     n = R.size()
 
     result = [[R.semiring.zero() for i in range(n)] for j in range(n)]
@@ -55,6 +55,42 @@ def generate_basis_upper_t_circulant_matrix(R, t, k):
                     result[i][j] = R.semiring.one()
                 else:
                     result[i][j] = t
+
+    return result
+
+
+def mul_basis_upper_t_circulant_matrix_and_matrix(R, t, l, M):
+    """Multiplies l-th basis upper-t-circulant matrix and matrix M."""
+    n = R.size()
+
+    result = [[R.semiring.zero() for i in range(n)] for j in range(n)]
+
+    for i in range(n):
+        for j in range(n):
+            k = (n - l + i) % n
+            if i - l >= 0:
+                b = R.semiring.one()
+            else:
+                b = t
+            result[i][j] = R.semiring.mul(b, M[k][j])
+
+    return result
+
+
+def mul_matrix_and_basis_upper_t_circulant_matrix(R, t, l, M):
+    """Multiplies matrix M and l-th basis upper-t-circulant matrix."""
+    n = R.size()
+
+    result = [[R.semiring.zero() for i in range(n)] for j in range(n)]
+
+    for i in range(n):
+        for j in range(n):
+            k = (j + l) % n
+            if j + l < n:
+                b = R.semiring.one()
+            else:
+                b = t
+            result[i][j] = R.semiring.mul(M[i][k], b)
 
     return result
 

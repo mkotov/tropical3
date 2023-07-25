@@ -6,10 +6,11 @@ import random
 import math
 import time
 import functools
-from itertools import product
 import tropical_algebra
 import matrix_tools
 import scipy.optimize
+import itertools
+import heapq
 
 
 def compress(G):
@@ -43,7 +44,8 @@ def get_sets_with_unique_elements(Z):
 
 
 def get_sets_without_elements(Z, N):
-    return list(filter(lambda S: len(S['inds']) != 0, [{'ijminval': S['ijminval'], 'inds': S['inds'].difference(N)} for S in Z]))
+    return list(filter(lambda S: len(S['inds']) != 0, [{
+        'ijminval': S['ijminval'], 'inds': S['inds'].difference(N)} for S in Z]))
 
 
 def get_compressed_covers(F):
@@ -89,7 +91,53 @@ def make_matrices_for_simplex(M, S, d1, d2):
     return c, Aub, bub, Aeq, beq
 
 
-def apply_attack(d1, d2, compute_base_element, heuristics_to_sort, bounds=(None, None)):
+def get_weighted_sets(S):
+    lins = {}
+    for T in S:
+        for p in T['ijminval']:
+            if not p['i'] in lins:
+                lins[p['i']] = 0
+            lins[p['i']] += 1.0 / len(T['ijminval'])
+    cols = {}
+    for T in S:
+        for p in T['ijminval']:
+            if not p['j'] in cols:
+                cols[p['j']] = 0
+            cols[p['j']] += 1.0 / len(T['ijminval'])
+    W = []
+    for T in S:
+        w = []
+        for p in T['ijminval']:
+            w.append((p['i'], p['j'], lins[p['i']] * cols[p['j']]))
+        W.append([(p[0], p[1])
+                 for p in sorted(w, reverse=True, key=lambda x: x[2])])
+    return W
+
+
+def enumerate_product_of_sets(W):
+    def enumerate_product_of_sets_(W, s, i):
+        if i == len(W) - 1:
+            if s < len(W[i]):
+                yield [W[i][s]]
+            else:
+                return
+        else:
+            for t in range(min(s + 1, len(W[i]))):
+                for q in enumerate_product_of_sets_(W, s - t, i + 1):
+                    yield [W[i][t]] + q
+
+    l = sum(len(w) - 1 for w in W) + 1
+    for s in range(l):
+        yield from enumerate_product_of_sets_(W, s, 0)
+
+
+def enumerate_covers(G):
+    for S in G:
+        W = get_weighted_sets(S)
+        yield from enumerate_product_of_sets(W)
+
+
+def apply_attack(d1, d2, compute_base_element, bounds=(None, None)):
     """Applies our attack. Returns two polynomials p' and q'."""
     def repack(i, j, m):
         return {'ijminval': [{'i': i, 'j': j, 'val': m['val']}], 'inds': m['inds']}
@@ -101,9 +149,8 @@ def apply_attack(d1, d2, compute_base_element, heuristics_to_sort, bounds=(None,
          for i in range(d1) for j in range(d2)}
     N = [repack(m[0], m[1], M[m]) for m in filter(check_bound, M)]
     G = get_compressed_covers(N)
-    H = unite_sets([set(product(*[[(c['i'], c['j']) for c in T['ijminval']] for T in S])) for S in G])
-    H = sorted(H, key=heuristics_to_sort, reverse=True)
-    for S in H:
+
+    for S in enumerate_covers(G):
         c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
         T = scipy.optimize.linprog(
             c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=bounds)

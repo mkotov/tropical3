@@ -50,25 +50,21 @@ def perform_one_experiment(instance_params, attack_params):
         }
 
     def run_attack(attack_params, instance):
-        def compute_base_element(i, j):
-            return matrix_tools.minus_matrix_from_matrix(
-                attack_params["ring"].mul(attack_params["ring"].mul(
-                    matrix_tools.generate_basis_upper_t_circulant_matrix(
-                        attack_params["ring"], instance["s"], i),
-                    instance["Y"]),
-                    matrix_tools.generate_basis_upper_t_circulant_matrix(attack_params["ring"], instance["t"], j)),
-                instance["Ka"])
+        cache_Bi_mul_Y = dict()
 
-        def heuristics_to_sort(a):
-            s = matrix_tools.spectrum(a, 0)
-            t = matrix_tools.spectrum(a, 1)
-            return (-len(a), -matrix_tools.number_of_indexes(a, 0) * matrix_tools.number_of_indexes(a, 1), s[0] * t[0], s, t)
+        def compute_base_element(i, j):
+            if i not in cache_Bi_mul_Y:
+                cache_Bi_mul_Y[i] = matrix_tools.mul_basis_upper_t_circulant_matrix_and_matrix(
+                    attack_params["ring"], instance["s"], i, instance["Y"])
+            return matrix_tools.minus_matrix_from_matrix(
+                matrix_tools.mul_matrix_and_basis_upper_t_circulant_matrix(
+                    attack_params["ring"], instance["t"], j, cache_Bi_mul_Y[i]),
+                instance["Ka"])
 
         return attack.apply_attack(
             attack_params["ring"].size(),
             attack_params["ring"].size(),
             compute_base_element,
-            heuristics_to_sort,
             bounds=(attack_params["min_matrix_elem"], attack_params["max_matrix_elem"]))
 
     def check_key(instance_params, instance, result):
@@ -125,6 +121,7 @@ if __name__ == "__main__":
     args = get_arguments_parser().parse_args()
     R = tropical_algebra.MatrixSemiring(
         tropical_algebra.R_min_plus(), args.size)
+
     test_tools.test_suite(perform_one_experiment,
                           {
                               "ring": R,

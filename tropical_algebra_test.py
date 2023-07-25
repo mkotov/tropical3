@@ -5,6 +5,7 @@
 import sys
 import unittest
 import tropical_algebra
+import matrix_tools
 import random
 
 
@@ -72,6 +73,19 @@ class TestTropicalAlgebra(unittest.TestCase):
         P = [[6, 7, 8], [8, 9, 10], [7, 8, 9]]
 
         self.assertEqual(P, M.pwr(A, 3))
+
+    def test_mul_basis_upper_t_circulant_matrix_and_matrix(self):
+        for i in range(10):
+            R = tropical_algebra.MatrixSemiring(
+                tropical_algebra.R_min_plus(), 10)
+            s = random.randint(-100, 100)
+            k = random.randint(0, 9)
+            Y = matrix_tools.generate_random_matrix(R, -100, 100)
+            B = matrix_tools.generate_basis_upper_t_circulant_matrix(R, s, k)
+            self.assertEqual(R.mul(
+                B, Y), matrix_tools.mul_basis_upper_t_circulant_matrix_and_matrix(R, s, k, Y))
+            self.assertEqual(R.mul(
+                Y, B), matrix_tools.mul_matrix_and_basis_upper_t_circulant_matrix(R, s, k, Y))
 
 
 if __name__ == "__main__":

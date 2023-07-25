@@ -59,9 +59,6 @@ def perform_one_experiment(instance_params, attack_params):
         def compute_base_element(i, j):
             return matrix_tools.minus_matrix_from_matrix(attack_params["ring"].mul(attack_params["ring"].pwr(instance["A"], i), attack_params["ring"].pwr(instance["B"], j)), instance["u"])
 
-        def heuristics_to_sort(a):
-            return (-len(a), -matrix_tools.number_of_indexes(a, 0) * matrix_tools.number_of_indexes(a, 1))
-
         def get_degree_bound(A):
             d = matrix_tools.get_first_repeated(
                 attack_params["ring"], A, attack_params["poly_deg_bound"])
@@ -71,7 +68,7 @@ def perform_one_experiment(instance_params, attack_params):
 
         d1 = get_degree_bound(instance["A"])
         d2 = get_degree_bound(instance["B"])
-        return attack.apply_attack(d1 + 1, d2 + 1, compute_base_element, heuristics_to_sort)
+        return attack.apply_attack(d1 + 1, d2 + 1, compute_base_element)
 
     def check_key(instance_params, instance, result):
         KC = instance_params["ring"].mul(instance_params["ring"].calc_poly(result[0], instance["A"]), instance_params["ring"].mul(
