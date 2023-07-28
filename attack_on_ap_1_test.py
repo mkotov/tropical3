@@ -6,7 +6,7 @@ An attack on Protocol 1 from Huang, Li, and Deng, "Public-Key Cryptography Based
 
 import tropical_algebra
 import matrix_tools
-import upper_matrix_tools
+import lower_matrix_tools
 import attack
 import test_tools
 import random
@@ -22,13 +22,13 @@ def perform_one_experiment(instance_params, attack_params):
 
         Y = matrix_tools.generate_random_matrix(
             instance_params["ring"], instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        P1 = upper_matrix_tools.generate_random_upper_t_circulant_matrix(
+        P1 = lower_matrix_tools.generate_random_lower_t_circulant_matrix(
             instance_params["ring"], s, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        Q1 = upper_matrix_tools.generate_random_upper_t_circulant_matrix(
+        Q1 = lower_matrix_tools.generate_random_lower_t_circulant_matrix(
             instance_params["ring"], t, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        P2 = upper_matrix_tools.generate_random_upper_t_circulant_matrix(
+        P2 = lower_matrix_tools.generate_random_lower_t_circulant_matrix(
             instance_params["ring"], s, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        Q2 = upper_matrix_tools.generate_random_upper_t_circulant_matrix(
+        Q2 = lower_matrix_tools.generate_random_lower_t_circulant_matrix(
             instance_params["ring"], t, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         Ka = instance_params["ring"].mul(
             P1, instance_params["ring"].mul(Y, Q1))
@@ -55,10 +55,10 @@ def perform_one_experiment(instance_params, attack_params):
 
         def compute_base_element(i, j):
             if i not in cache_Bi_mul_Y:
-                cache_Bi_mul_Y[i] = upper_matrix_tools.mul_basis_upper_t_circulant_matrix_and_matrix(
+                cache_Bi_mul_Y[i] = lower_matrix_tools.mul_basis_lower_t_circulant_matrix_and_matrix(
                     attack_params["ring"], instance["s"], i, instance["Y"])
             return matrix_tools.minus_matrix_from_matrix(
-                upper_matrix_tools.mul_matrix_and_basis_upper_t_circulant_matrix(
+                lower_matrix_tools.mul_matrix_and_basis_lower_t_circulant_matrix(
                     attack_params["ring"], instance["t"], j, cache_Bi_mul_Y[i]),
                 instance["Ka"])
 
@@ -71,10 +71,10 @@ def perform_one_experiment(instance_params, attack_params):
     def check_key(instance_params, instance, result):
         KC = instance_params["ring"].mul(
             instance_params["ring"].mul(
-                upper_matrix_tools.generate_upper_t_circulant_matrix(
+                lower_matrix_tools.generate_lower_t_circulant_matrix(
                     instance_params["ring"], result[0], instance["s"]),
                 instance["Kb"]),
-            upper_matrix_tools.generate_upper_t_circulant_matrix(instance_params["ring"], result[1], instance["t"]))
+            lower_matrix_tools.generate_lower_t_circulant_matrix(instance_params["ring"], result[1], instance["t"]))
         return instance["K"] == KC
 
     return test_tools.perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key)
@@ -110,7 +110,7 @@ def get_arguments_parser():
     )
     parser.add_argument(
         "--max_matrix_elem",
-        help="Upper bound to generate elements of matrices",
+        help="Lower bound to generate elements of matrices",
         required=True,
         type=int
     )
