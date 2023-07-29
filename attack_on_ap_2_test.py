@@ -16,23 +16,21 @@ def perform_one_experiment(instance_params, attack_params):
     def generate_instance(instance_params):
         s = random.randint(
             instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        p_a = random.randint(
-            instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         t = random.randint(
             instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        p_b = random.randint(
+        p = random.randint(
             instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
 
         Y = matrix_tools.generate_random_matrix(
             instance_params["ring"], instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         P1 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            instance_params["ring"], s, p_a, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+            instance_params["ring"], s, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         Q1 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            instance_params["ring"], t, p_b, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+            instance_params["ring"], t, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         P2 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            instance_params["ring"], s, p_a, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+            instance_params["ring"], s, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         Q2 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            instance_params["ring"], t, p_b, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+            instance_params["ring"], t, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         Ka = instance_params["ring"].mul(
             P1, instance_params["ring"].mul(Y, Q1))
         Kb = instance_params["ring"].mul(
@@ -47,26 +45,25 @@ def perform_one_experiment(instance_params, attack_params):
         return {
             "Y": Y,
             "s": s,
-            "p_a": p_a,
+            "p": p,
             "t": t,
-            "p_b": p_b,
             "Ka": Ka,
             "Kb": Kb,
             "K": KA
         }
 
     def run_attack(attack_params, instance):
-        def compute_base_element():
+        def compute_base_element(i, j):
             return matrix_tools.minus_matrix_from_matrix(
                 anti_matrix_tools.mul_matrix_and_basis_anti_t_p_circulant_matrix(
-                    attack_params["ring"], instance["t"], instance["p_b"],
+                    attack_params["ring"], instance["t"], instance["p"],
                     anti_matrix_tools.mul_basis_anti_t_p_circulant_matrix_and_matrix(
-                        attack_params["ring"], instance["s"], instance["p_a"], instance["Y"])),
+                        attack_params["ring"], instance["s"], instance["p"], instance["Y"])),
                 instance["Ka"])
 
-        return attack.apply_attack_with_one_basis(
-            attack_params["ring"].size(),
-            attack_params["ring"].size(),
+        return attack.apply_attack(
+            1,
+            1,
             compute_base_element,
             bounds=(attack_params["min_matrix_elem"], attack_params["max_matrix_elem"]))
 

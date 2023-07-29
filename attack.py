@@ -125,7 +125,7 @@ def enumerate_product_of_sets(W):
                 yield [W[i][s]]
             else:
                 return
-        else:
+        elif len(W) > 0:
             for t in range(min(s + 1, len(W[i]))):
                 for q in enumerate_product_of_sets_(W, s - t, i + 1):
                     yield [W[i][t]] + q
@@ -157,39 +157,9 @@ def apply_attack(d1, d2, compute_base_element, bounds=(None, None)):
 
     for S in enumerate_covers(G):
         c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
-        T = scipy.optimize.linprog(
-            c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=bounds)
-        if T.success:
-            return [[T.x[i] for i in range(d1)], [T.x[d1 + i] for i in range(d2)]]
-    return None
-
-
-def apply_attack_with_one_basis(d1, d2, compute_base_element, bounds=(None, None)):
-    """Applies our attack. Returns two polynomials p' and q'."""
-
-    def repack(i, j, m):
-        return {'ijminval': [{'i': i, 'j': j, 'val': m['val']}], 'inds': m['inds']}
-
-    def check_bound(m):
-        return True
-
-    m = matrix_tools.get_minimum_of_matrix(compute_base_element())
-    M = {(i, j): m
-         for i in range(d1) for j in range(d2)}
-    N = [repack(m[0], m[1], M[m]) for m in filter(check_bound, M)]
-    G = get_compressed_covers(N)
-    if len(G) == 1:
-        G = G * len(N)
-
-    for S in enumerate_covers(G):
-        c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
-        # if d1 == d2:
-        #     Aub = []
-        #     for i in range(d1 + d2):
-        #         v = [0 for _ in range(d1 + d2)]
-        #         v[i] = -1
-        #         Aub.append(v)
-        # bub = [-bounds[0]] * (d2 + d1)
+        if len(Aub) == 0:
+            Aub = None
+            bub = None
 
         T = scipy.optimize.linprog(
             c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=bounds)
