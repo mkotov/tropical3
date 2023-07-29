@@ -15,6 +15,7 @@ import heapq
 
 def compress(G):
     """Compresses a set of pair [a1, L1], [a2, L2], ..., [an, Ln] to the set of pair, where all first components are unique."""
+
     def find(H, S):
         for i in range(len(H)):
             if S['inds'] == H[i]['inds']:
@@ -40,7 +41,9 @@ def unite_sets(ss):
 
 def get_sets_with_unique_elements(Z):
     """Returns sets that has unique elements."""
-    return list(filter(lambda S: len(S['inds'].difference(unite_sets([T['inds'] for T in filter(lambda T: S != T, Z)]))) != 0, Z))
+    return list(
+        filter(lambda S: len(S['inds'].difference(unite_sets([T['inds'] for T in filter(lambda T: S != T, Z)]))) != 0,
+               Z))
 
 
 def get_sets_without_elements(Z, N):
@@ -80,6 +83,7 @@ def make_matrices_for_simplex(M, S, d1, d2):
         v[i] = -1
         v[d1 + j] = -1
         return v
+
     for i in range(d1):
         for j in range(d2):
             if (i, j) in S:
@@ -110,7 +114,7 @@ def get_weighted_sets(S):
         for p in T['ijminval']:
             w.append((p['i'], p['j'], lins[p['i']] * cols[p['j']]))
         W.append([(p[0], p[1])
-                 for p in sorted(w, reverse=True, key=lambda x: x[2])])
+                  for p in sorted(w, reverse=True, key=lambda x: x[2])])
     return W
 
 
@@ -139,6 +143,7 @@ def enumerate_covers(G):
 
 def apply_attack(d1, d2, compute_base_element, bounds=(None, None)):
     """Applies our attack. Returns two polynomials p' and q'."""
+
     def repack(i, j, m):
         return {'ijminval': [{'i': i, 'j': j, 'val': m['val']}], 'inds': m['inds']}
 
@@ -152,6 +157,40 @@ def apply_attack(d1, d2, compute_base_element, bounds=(None, None)):
 
     for S in enumerate_covers(G):
         c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
+        T = scipy.optimize.linprog(
+            c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=bounds)
+        if T.success:
+            return [[T.x[i] for i in range(d1)], [T.x[d1 + i] for i in range(d2)]]
+    return None
+
+
+def apply_attack_with_one_basis(d1, d2, compute_base_element, bounds=(None, None)):
+    """Applies our attack. Returns two polynomials p' and q'."""
+
+    def repack(i, j, m):
+        return {'ijminval': [{'i': i, 'j': j, 'val': m['val']}], 'inds': m['inds']}
+
+    def check_bound(m):
+        return True
+
+    m = matrix_tools.get_minimum_of_matrix(compute_base_element())
+    M = {(i, j): m
+         for i in range(d1) for j in range(d2)}
+    N = [repack(m[0], m[1], M[m]) for m in filter(check_bound, M)]
+    G = get_compressed_covers(N)
+    if len(G) == 1:
+        G = G * len(N)
+
+    for S in enumerate_covers(G):
+        c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
+        # if d1 == d2:
+        #     Aub = []
+        #     for i in range(d1 + d2):
+        #         v = [0 for _ in range(d1 + d2)]
+        #         v[i] = -1
+        #         Aub.append(v)
+        # bub = [-bounds[0]] * (d2 + d1)
+
         T = scipy.optimize.linprog(
             c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=bounds)
         if T.success:

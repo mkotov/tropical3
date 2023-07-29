@@ -3,7 +3,6 @@
 """
 
 import random
-import tropical_algebra
 
 
 def generate_random_lower_t_circulant_matrix(R, t, a_min, a_max):

@@ -3,7 +3,6 @@
 """
 
 import random
-import tropical_algebra
 
 def generate_random_upper_t_circulant_matrix(R, t, a_min, a_max):
     """Generates an upper-t-circulant matrix of size n x n."""

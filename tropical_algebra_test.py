@@ -49,7 +49,7 @@ class TestTropicalAlgebra(unittest.TestCase):
         self.assertEqual(U, M.one())
         self.assertEqual(C, M.mul_by_coef(2, A))
 
-    def test_matrix_min_plus_algebra_pwr(self):
+    def test_matrix_min_plus_algebra_pwr_1(self):
         M = tropical_algebra.MatrixSemiring(tropical_algebra.R_min_plus(), 3)
 
         A = [[-42, 13, -96], [-28, 16, 65], [-85, 31, -75]]
@@ -67,7 +67,7 @@ class TestTropicalAlgebra(unittest.TestCase):
 
         self.assertEqual(P, M.calc_poly(p, A))
 
-    def test_matrix_min_plus_algebra_pwr(self):
+    def test_matrix_min_plus_algebra_pwr_2(self):
         M = tropical_algebra.MatrixSemiring(tropical_algebra.R_max_plus(), 3)
 
         A = [[0, tropical_algebra.MINFTY, 2], [2, 0, 4], [1, 2, 3]]
