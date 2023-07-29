@@ -35,7 +35,7 @@ def get_minimum_of_matrix(A):
 
 
 def get_maximum_of_matrix(A):
-    """Returns maximim of a matrix A and the set of corresponding indexes."""
+    """Returns maximum of a matrix A and the set of corresponding indexes."""
     best = {'val': A[0][0], 'inds': set()}
     for i in range(len(A)):
         for j in range(len(A[i])):

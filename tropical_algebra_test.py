@@ -6,6 +6,8 @@ import sys
 import unittest
 import tropical_algebra
 import matrix_tools
+import upper_matrix_tools
+import lower_matrix_tools
 import random
 
 
@@ -47,7 +49,7 @@ class TestTropicalAlgebra(unittest.TestCase):
         self.assertEqual(U, M.one())
         self.assertEqual(C, M.mul_by_coef(2, A))
 
-    def test_matrix_min_plus_algebra_pwr(self):
+    def test_matrix_min_plus_algebra_pwr_1(self):
         M = tropical_algebra.MatrixSemiring(tropical_algebra.R_min_plus(), 3)
 
         A = [[-42, 13, -96], [-28, 16, 65], [-85, 31, -75]]
@@ -65,7 +67,7 @@ class TestTropicalAlgebra(unittest.TestCase):
 
         self.assertEqual(P, M.calc_poly(p, A))
 
-    def test_matrix_min_plus_algebra_pwr(self):
+    def test_matrix_min_plus_algebra_pwr_2(self):
         M = tropical_algebra.MatrixSemiring(tropical_algebra.R_max_plus(), 3)
 
         A = [[0, tropical_algebra.MINFTY, 2], [2, 0, 4], [1, 2, 3]]
@@ -81,11 +83,24 @@ class TestTropicalAlgebra(unittest.TestCase):
             s = random.randint(-100, 100)
             k = random.randint(0, 9)
             Y = matrix_tools.generate_random_matrix(R, -100, 100)
-            B = matrix_tools.generate_basis_upper_t_circulant_matrix(R, s, k)
+            B = upper_matrix_tools.generate_basis_upper_t_circulant_matrix(R, s, k)
             self.assertEqual(R.mul(
-                B, Y), matrix_tools.mul_basis_upper_t_circulant_matrix_and_matrix(R, s, k, Y))
+                B, Y), upper_matrix_tools.mul_basis_upper_t_circulant_matrix_and_matrix(R, s, k, Y))
             self.assertEqual(R.mul(
-                Y, B), matrix_tools.mul_matrix_and_basis_upper_t_circulant_matrix(R, s, k, Y))
+                Y, B), upper_matrix_tools.mul_matrix_and_basis_upper_t_circulant_matrix(R, s, k, Y))
+
+    def test_mul_basis_lower_t_circulant_matrix_and_matrix(self):
+        for i in range(10):
+            R = tropical_algebra.MatrixSemiring(
+                tropical_algebra.R_min_plus(), 10)
+            s = random.randint(-100, 100)
+            k = random.randint(0, 9)
+            Y = matrix_tools.generate_random_matrix(R, -100, 100)
+            B = lower_matrix_tools.generate_basis_lower_t_circulant_matrix(R, s, k)
+            self.assertEqual(R.mul(
+                B, Y), lower_matrix_tools.mul_basis_lower_t_circulant_matrix_and_matrix(R, s, k, Y))
+            self.assertEqual(R.mul(
+                Y, B), lower_matrix_tools.mul_matrix_and_basis_lower_t_circulant_matrix(R, s, k, Y))
 
 
 if __name__ == "__main__":
