@@ -3,7 +3,7 @@
 """
 
 import time
-import multiprocessing
+import multiprocess
 
 
 def perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key):
@@ -26,8 +26,8 @@ def test_suite(perform_one_experiment, instance_params, attack_params, number_of
     ok = 0
     fl = 0
     for i in range(1, number_of_tests + 1):
-        q = multiprocessing.Queue()
-        p = multiprocessing.Process(target=lambda q: q.put(
+        q = multiprocess.Queue()
+        p = multiprocess.Process(target=lambda q: q.put(
             perform_one_experiment(instance_params, attack_params)), args=(q,))
         p.start()
         p.join(timeout)

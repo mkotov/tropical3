@@ -58,15 +58,21 @@ def mul_basis_lower_t_circulant_matrix_and_matrix(R, t, l, M):
     n = R.size()
 
     result = [[R.semiring.zero() for i in range(n)] for j in range(n)]
-
-    for i in range(n):
-        for j in range(n):
-            k = (n - l + i) % n
-            if i - l >= 0:
+    if l == 0:
+        for i in range(n):
+            for j in range(n):
+                k = (n - l + i) % n
                 b = R.semiring.one()
-            else:
-                b = t
-            result[i][j] = R.semiring.mul(b, M[k][j])
+                result[i][j] = R.semiring.mul(b, M[k][j])
+    else:
+        for i in range(n):
+            for j in range(n):
+                k = (n - l + i) % n
+                if i - l < 0:
+                    b = R.semiring.one()
+                else:
+                    b = t
+                result[i][j] = R.semiring.mul(b, M[k][j])
 
     return result
 
@@ -77,13 +83,20 @@ def mul_matrix_and_basis_lower_t_circulant_matrix(R, t, l, M):
 
     result = [[R.semiring.zero() for i in range(n)] for j in range(n)]
 
-    for i in range(n):
-        for j in range(n):
-            k = (j + l) % n
-            if j + l < n:
+    if l == 0:
+        for i in range(n):
+            for j in range(n):
+                k = (j + l) % n
                 b = R.semiring.one()
-            else:
-                b = t
-            result[i][j] = R.semiring.mul(M[i][k], b)
+                result[i][j] = R.semiring.mul(M[i][k], b)
+    else:
+        for i in range(n):
+            for j in range(n):
+                k = (j + l) % n
+                if j + l >= n:
+                    b = R.semiring.one()
+                else:
+                    b = t
+                result[i][j] = R.semiring.mul(M[i][k], b)
 
     return result
