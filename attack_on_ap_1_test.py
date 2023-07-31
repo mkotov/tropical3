@@ -1,6 +1,6 @@
 """
 (c) I. Buchinskiy, M. Kotov, A. Treier, 2023.
-An attack on a protocol from B. Amutha and R. Perumal, Public key exchange protocols based on tropical lower circulant and anti circulant matrices, AIMS Mathematics, 8(7): 17307–17334.
+An attack on Protocol 1 from B. Amutha and R. Perumal, Public key exchange protocols based on tropical lower circulant and anti circulant matrices, AIMS Mathematics, 8(7): 17307–17334.
 """
 
 import tropical_algebra

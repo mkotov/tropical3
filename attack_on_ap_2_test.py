@@ -1,6 +1,6 @@
 """
 (c) I. Buchinskiy, M. Kotov, A. Treier, 2023.
-An attack on a protocol from B. Amutha and R. Perumal, Public key exchange protocols based on tropical lower circulant and anti circulant matrices, AIMS Mathematics, 8(7): 17307–17334.
+An attack on Protocol 2 from B. Amutha and R. Perumal, Public key exchange protocols based on tropical lower circulant and anti circulant matrices, AIMS Mathematics, 8(7): 17307–17334.
 """
 
 import tropical_algebra
@@ -14,6 +14,7 @@ import argparse
 
 def perform_one_experiment(instance_params, attack_params):
     def generate_instance(instance_params):
+        R = instance_params["ring"]
         s = random.randint(
             instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         t = random.randint(
@@ -22,23 +23,19 @@ def perform_one_experiment(instance_params, attack_params):
             instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
 
         Y = matrix_tools.generate_random_matrix(
-            instance_params["ring"], instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+            R, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         P1 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            instance_params["ring"], s, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+            R, s, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         Q1 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            instance_params["ring"], t, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+            R, t, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         P2 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            instance_params["ring"], s, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+            R, s, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
         Q2 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            instance_params["ring"], t, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        Ka = instance_params["ring"].mul(
-            P1, instance_params["ring"].mul(Y, Q1))
-        Kb = instance_params["ring"].mul(
-            P2, instance_params["ring"].mul(Y, Q2))
-        KA = instance_params["ring"].mul(
-            P1, instance_params["ring"].mul(Kb, Q1))
-        KB = instance_params["ring"].mul(
-            P2, instance_params["ring"].mul(Ka, Q2))
+            R, t, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+        Ka = R.mul(P1, R.mul(Y, Q1))
+        Kb = R.mul(P2, R.mul(Y, Q2))
+        KA = R.mul(P1, R.mul(Kb, Q1))
+        KB = R.mul(P2, R.mul(Ka, Q2))
         if KA != KB:
             return None
 
