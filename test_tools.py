@@ -9,15 +9,15 @@ import multiprocess
 def perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key):
     """Runs one experiment: generates an instance, runs an attack, and check the obtained key."""
 
-    instance = generate_instance(instance_params)
-    if not instance:
+    instance, key = generate_instance(instance_params)
+    if not instance or not key:
         return False
 
     result = run_attack(attack_params, instance)
     if not result:
         return False
 
-    return check_key(instance_params, instance, result)
+    return check_key(attack_params, instance, key, result)
 
 
 def test_suite(perform_one_experiment, instance_params, attack_params, number_of_tests, timeout):

@@ -17,9 +17,9 @@ def generate_random_polynomial(D, pm, pM):
     return [random.randint(pm, pM) for i in range(D + 1)]
 
 
-def minus_matrix_from_matrix(A, B):
-    """Returns A - B. Some elements of the matrices can be infinity."""
-    return [[x - y for x, y in zip(row_a, row_b)] for row_a, row_b in zip(A, B)]
+def subtract_matrix_from_matrix(A, B):
+    """Returns A - B."""
+    return [[x - y for x, y in zip(a, b)] for a, b in zip(A, B)]
 
 
 def get_minimum_of_matrix(A):
@@ -32,29 +32,6 @@ def get_minimum_of_matrix(A):
             elif A[i][j] == best['val']:
                 best['inds'].add((i, j))
     return best
-
-
-def get_maximum_of_matrix(A):
-    """Returns maximum of a matrix A and the set of corresponding indexes."""
-    best = {'val': A[0][0], 'inds': set()}
-    for i in range(len(A)):
-        for j in range(len(A[i])):
-            if A[i][j] > best['val']:
-                best = {'val': A[i][j], 'inds': {(i, j)}}
-            elif A[i][j] == best['val']:
-                best['inds'].add((i, j))
-    return best
-
-
-def number_of_indexes(S, i):
-    """Returns the number of i-th indexes."""
-    return len(set([c[i] for c in S]))
-
-
-def spectrum(S, j):
-    """Returns the distribution of indexes."""
-    a = [c[j] for c in S]
-    return sorted([a.count(i) for i in set(a)], reverse=True)
 
 
 def is_matrix_minus_matrix_const(R, A, B):
@@ -114,3 +91,96 @@ def get_first_repeated(R, A, bound):
             return i
 
     return None
+
+
+def generate_upper_t_circulant_matrix(R, array, t):
+    """Generates an upper-t-circulant matrix of size n x n by array."""
+    n = R.size()
+    one = R.semiring.one()
+    return [[R.semiring.mul(array[(i - j + n) % n], t if j > i else one) for j in range(n)] for i in range(n)]
+
+
+def generate_random_upper_t_circulant_matrix(R, t, a_min, a_max):
+    """Generates an upper-t-circulant matrix of size n x n."""
+    n = R.size()
+    array = [random.randint(a_min, a_max) for i in range(n)]
+    return generate_upper_t_circulant_matrix(R, array, t)
+
+
+def generate_basis_upper_t_circulant_matrix(R, t, k):
+    """Generates k-th basis upper-t-circulant matrix of size n x n."""
+    n = R.size()
+    zero = R.semiring.zero()
+    one = R.semiring.one()
+    array = [one if k == i else zero for i in range(n)]
+    return generate_upper_t_circulant_matrix(R, array, t)
+
+
+def mul_basis_upper_t_circulant_matrix_and_matrix(R, t, l, M):
+    """Multiplies l-th basis upper-t-circulant matrix and matrix M."""
+    n = R.size()
+    one = R.semiring.one()
+    return [[R.semiring.mul(one if i - l >= 0 else t, M[(n - l + i) % n][j]) for j in range(n)] for i in range(n)]
+
+
+def mul_matrix_and_basis_upper_t_circulant_matrix(R, t, l, M):
+    """Multiplies matrix M and l-th basis upper-t-circulant matrix."""
+    n = R.size()
+    one = R.semiring.one()
+    return [[R.semiring.mul(M[i][(j + l) % n], one if j + l < n else t) for j in range(n)] for i in range(n)]
+
+
+def generate_lower_t_circulant_matrix(R, array, t):
+    """Generates a lower-t-circulant matrix of size n x n by array."""
+    n = R.size()
+    one = R.semiring.one()
+    return [[R.semiring.mul(array[(i - j + n) % n], t if j < i else one) for j in range(n)] for i in range(n)]
+
+
+def generate_random_lower_t_circulant_matrix(R, t, a_min, a_max):
+    """Generates a lower-t-circulant matrix of size n x n."""
+    n = R.size()
+    array = [random.randint(a_min, a_max) for i in range(n)]
+    return generate_lower_t_circulant_matrix(R, array, t)
+
+
+def generate_basis_lower_t_circulant_matrix(R, t, k):
+    """Generates k-th basis lower-t-circulant matrix of size n x n."""
+    n = R.size()
+    zero = R.semiring.zero()
+    one = R.semiring.one()
+    array = [one if i == k else zero for i in range(n)]
+    return generate_lower_t_circulant_matrix(R, array, t)
+
+
+def mul_basis_lower_t_circulant_matrix_and_matrix(R, t, l, M):
+    """Multiplies l-th basis lower-t-circulant matrix and matrix M."""
+    n = R.size()
+    one = R.semiring.one()
+    return [[R.semiring.mul(one if (n - l + i) % n >= i else t, M[(n - l + i) % n][j]) for j in range(n)] for i in range(n)]
+
+
+def mul_matrix_and_basis_lower_t_circulant_matrix(R, t, l, M):
+    """Multiplies matrix M and l-th basis lower-t-circulant matrix."""
+    n = R.size()
+    one = R.semiring.one()
+    return [[R.semiring.mul(M[i][(j + l) % n], one if (j + l) % n <= j else t) for j in range(n)] for i in range(n)]
+
+
+def generate_anti_t_p_circulant_matrix(R, c_1, t, p):
+    """Generates an anti-t-p-circulant matrix of size n x n by its first element."""
+    n = R.size()
+    one = R.semiring.one()
+    array = [c_1 + p * i for i in range(n)]
+    return [[R.semiring.mul(array[(i - j + n) % n], t if i + j != n - 1 else one) for j in range(n)] for i in range(n)]
+
+
+def generate_random_anti_t_p_circulant_matrix(R, t, p, a_min, a_max):
+    """Generates an anti-t-p-circulant matrix of size n x n."""
+    c_1 = random.randint(a_min, a_max)
+    return generate_anti_t_p_circulant_matrix(R, c_1, t, p)
+
+
+def generate_basis_anti_t_p_circulant_matrix(R, t, p):
+    """Generates basis anti-t-p-circulant matrix of size n x n."""
+    return generate_anti_t_p_circulant_matrix(R, 0, t, p)

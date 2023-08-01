@@ -5,37 +5,42 @@ An attack on Protocol 2 from B. Amutha and R. Perumal, Public key exchange proto
 
 import tropical_algebra
 import matrix_tools
-import anti_matrix_tools
+from matrix_tools import generate_random_anti_t_p_circulant_matrix
+from matrix_tools import generate_random_matrix
+from matrix_tools import generate_basis_anti_t_p_circulant_matrix
+from matrix_tools import generate_anti_t_p_circulant_matrix
+from matrix_tools import subtract_matrix_from_matrix
 import attack
 import test_tools
-import random
+from random import randint
 import argparse
 
 
 def perform_one_experiment(instance_params, attack_params):
     def generate_instance(instance_params):
         R = instance_params["ring"]
-        s = random.randint(
-            instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        t = random.randint(
-            instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        p = random.randint(
-            instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+        mm = instance_params["min_matrix_elem"]
+        mM = instance_params["max_matrix_elem"]
+        sm = instance_params["min_matrix_param"]
+        sM = instance_params["max_matrix_param"]
+        pm = instance_params["min_matrix_step"]
+        pM = instance_params["max_matrix_step"]
 
-        Y = matrix_tools.generate_random_matrix(
-            R, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        P1 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            R, s, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        Q1 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            R, t, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        P2 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            R, s, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        Q2 = anti_matrix_tools.generate_random_anti_t_p_circulant_matrix(
-            R, t, p, instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
+        s = randint(sm, sM)
+        t = randint(sm, sM)
+        p = randint(pm, pM)
+
+        Y = generate_random_matrix(R, mm, mM)
+        P1 = generate_random_anti_t_p_circulant_matrix(R, s, p, mm, mM)
+        Q1 = generate_random_anti_t_p_circulant_matrix(R, t, p, mm, mM)
+        P2 = generate_random_anti_t_p_circulant_matrix(R, s, p, mm, mM)
+        Q2 = generate_random_anti_t_p_circulant_matrix(R, t, p, mm, mM)
+
         Ka = R.mul(P1, R.mul(Y, Q1))
         Kb = R.mul(P2, R.mul(Y, Q2))
         KA = R.mul(P1, R.mul(Kb, Q1))
         KB = R.mul(P2, R.mul(Ka, Q2))
+
         if KA != KB:
             return None
 
@@ -45,33 +50,41 @@ def perform_one_experiment(instance_params, attack_params):
             "p": p,
             "t": t,
             "Ka": Ka,
-            "Kb": Kb,
-            "K": KA
-        }
+            "Kb": Kb
+        }, KA
 
     def run_attack(attack_params, instance):
+        R = attack_params["ring"]
+        mm = attack_params["min_matrix_elem"]
+        mM = attack_params["max_matrix_elem"]
+
+        s = instance["s"]
+        t = instance["t"]
+        p = instance["p"]
+        Y = instance["Y"]
+        Ka = instance["Ka"]
+
         def compute_base_element(i, j):
-            return matrix_tools.minus_matrix_from_matrix(
-                anti_matrix_tools.mul_matrix_and_basis_anti_t_p_circulant_matrix(
-                    attack_params["ring"], instance["t"], instance["p"],
-                    anti_matrix_tools.mul_basis_anti_t_p_circulant_matrix_and_matrix(
-                        attack_params["ring"], instance["s"], instance["p"], instance["Y"])),
-                instance["Ka"])
+            B1 = generate_basis_anti_t_p_circulant_matrix(R, s, p)
+            B2 = generate_basis_anti_t_p_circulant_matrix(R, t, p)
 
-        return attack.apply_attack(
-            1,
-            1,
-            compute_base_element,
-            bounds=(attack_params["min_matrix_elem"], attack_params["max_matrix_elem"]))
+            return subtract_matrix_from_matrix(R.mul(R.mul(B1, Y), B2), Ka)
 
-    def check_key(instance_params, instance, result):
-        KC = instance_params["ring"].mul(
-            instance_params["ring"].mul(
-                anti_matrix_tools.generate_anti_t_p_circulant_matrix(
-                    instance_params["ring"], result[0], instance["s"]),
-                instance["Kb"]),
-            anti_matrix_tools.generate_anti_t_p_circulant_matrix(instance_params["ring"], result[1], instance["t"]))
-        return instance["K"] == KC
+        return attack.apply_attack(1, 1, compute_base_element, bounds=(mm, mM))
+
+    def check_key(attack_params, instance, key, result):
+        R = attack_params["ring"]
+
+        s = instance["s"]
+        t = instance["t"]
+        p = instance["p"]
+        Kb = instance["Kb"]
+
+        P = generate_anti_t_p_circulant_matrix(R, result[0][0], s, p)
+        Q = generate_anti_t_p_circulant_matrix(R, result[1][0], t, p)
+        KC = R.mul(R.mul(P, Kb), Q)
+
+        return key == KC
 
     return test_tools.perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key)
 
@@ -110,6 +123,30 @@ def get_arguments_parser():
         required=True,
         type=int
     )
+    parser.add_argument(
+        "--min_matrix_param",
+        help="Lower bound to generate s and t",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--max_matrix_param",
+        help="Lower bound to generate s and t",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--min_matrix_step",
+        help="Lower bound to generate p",
+        required=True,
+        type=int
+    )
+    parser.add_argument(
+        "--max_matrix_step",
+        help="Lower bound to generate p",
+        required=True,
+        type=int
+    )
 
     return parser
 
@@ -124,6 +161,10 @@ if __name__ == "__main__":
                               "ring": R,
                               "min_matrix_elem": args.min_matrix_elem,
                               "max_matrix_elem": args.max_matrix_elem,
+                              "min_matrix_param": args.min_matrix_param,
+                              "max_matrix_param": args.max_matrix_param,
+                              "min_matrix_step": args.min_matrix_step,
+                              "max_matrix_step": args.max_matrix_step,
                           },
                           {
                               "ring": R,

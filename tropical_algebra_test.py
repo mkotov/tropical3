@@ -6,8 +6,6 @@ import sys
 import unittest
 import tropical_algebra
 import matrix_tools
-import upper_matrix_tools
-import lower_matrix_tools
 import random
 
 
@@ -77,30 +75,40 @@ class TestTropicalAlgebra(unittest.TestCase):
         self.assertEqual(P, M.pwr(A, 3))
 
     def test_mul_basis_upper_t_circulant_matrix_and_matrix(self):
+        R = tropical_algebra.MatrixSemiring(
+            tropical_algebra.R_min_plus(), 10)
         for i in range(10):
-            R = tropical_algebra.MatrixSemiring(
-                tropical_algebra.R_min_plus(), 10)
             s = random.randint(-100, 100)
             k = random.randint(0, 9)
             Y = matrix_tools.generate_random_matrix(R, -100, 100)
-            B = upper_matrix_tools.generate_basis_upper_t_circulant_matrix(R, s, k)
+            B = matrix_tools.generate_basis_upper_t_circulant_matrix(R, s, i)
             self.assertEqual(R.mul(
-                B, Y), upper_matrix_tools.mul_basis_upper_t_circulant_matrix_and_matrix(R, s, k, Y))
+                B, Y), matrix_tools.mul_basis_upper_t_circulant_matrix_and_matrix(R, s, i, Y))
             self.assertEqual(R.mul(
-                Y, B), upper_matrix_tools.mul_matrix_and_basis_upper_t_circulant_matrix(R, s, k, Y))
+                Y, B), matrix_tools.mul_matrix_and_basis_upper_t_circulant_matrix(R, s, i, Y))
 
     def test_mul_basis_lower_t_circulant_matrix_and_matrix(self):
+        R = tropical_algebra.MatrixSemiring(
+            tropical_algebra.R_min_plus(), 10)
         for i in range(10):
-            R = tropical_algebra.MatrixSemiring(
-                tropical_algebra.R_min_plus(), 10)
             s = random.randint(-100, 100)
-            k = random.randint(0, 9)
             Y = matrix_tools.generate_random_matrix(R, -100, 100)
-            B = lower_matrix_tools.generate_basis_lower_t_circulant_matrix(R, s, k)
+            B = matrix_tools.generate_basis_lower_t_circulant_matrix(R, s, i)
             self.assertEqual(R.mul(
-                B, Y), lower_matrix_tools.mul_basis_lower_t_circulant_matrix_and_matrix(R, s, k, Y))
+                B, Y), matrix_tools.mul_basis_lower_t_circulant_matrix_and_matrix(R, s, i, Y))
             self.assertEqual(R.mul(
-                Y, B), lower_matrix_tools.mul_matrix_and_basis_lower_t_circulant_matrix(R, s, k, Y))
+                Y, B), matrix_tools.mul_matrix_and_basis_lower_t_circulant_matrix(R, s, i, Y))
+
+    def test_generate_anti_t_p_circulant_matrix(self):
+        R = tropical_algebra.MatrixSemiring(tropical_algebra.R_min_plus(), 3)
+        A = matrix_tools.generate_anti_t_p_circulant_matrix(R, 1, 10, 100)
+        R = [
+            [11, 211, 101],
+            [111, 1, 211],
+            [201, 111, 11]
+        ]
+
+        self.assertEqual(R, A)
 
 
 if __name__ == "__main__":

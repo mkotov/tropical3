@@ -1,48 +1,46 @@
 """
 (c) I. Buchinskiy, M. Kotov, A. Treier, 2023
 
-An attack on the protocol from Durcheva, M. I. "TrES: Tropical Encryption Scheme Based on Double Key Exchange." European J. IT and CS, 2(4), 11–17.
+An attack on the second step of the protocol from Durcheva, M. I. "TrES: Tropical Encryption Scheme Based on Double Key Exchange." European J. IT and CS, 2(4), 11–17.
 """
 
 import tropical_algebra
-import matrix_tools
+from matrix_tools import generate_random_matrix
+from matrix_tools import generate_random_polynomial
+from matrix_tools import get_first_repeated
+from matrix_tools import subtract_matrix_from_matrix
 import attack
 import test_tools
-import random
+from random import randint
 import argparse
 
 
 def perform_one_experiment(instance_params, attack_params):
     def generate_instance(instance_params):
         """Generates an instance of the protocol."""
-        D1 = random.randint(
-            instance_params["min_poly_deg"], instance_params["max_poly_deg"])
-        D2 = random.randint(
-            instance_params["min_poly_deg"], instance_params["max_poly_deg"])
-        D3 = random.randint(
-            instance_params["min_poly_deg"], instance_params["max_poly_deg"])
-        D4 = random.randint(
-            instance_params["min_poly_deg"], instance_params["max_poly_deg"])
-        A = matrix_tools.generate_random_matrix(
-            instance_params["ring"], instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        B = matrix_tools.generate_random_matrix(
-            instance_params["ring"], instance_params["min_matrix_elem"], instance_params["max_matrix_elem"])
-        p1 = matrix_tools.generate_random_polynomial(
-            D1, instance_params["min_poly_coef"], instance_params["max_poly_coef"])
-        p2 = matrix_tools.generate_random_polynomial(
-            D2, instance_params["min_poly_coef"], instance_params["max_poly_coef"])
-        u = instance_params["ring"].mul(instance_params["ring"].calc_poly(
-            p1, A), instance_params["ring"].calc_poly(p2, B))
-        q1 = matrix_tools.generate_random_polynomial(
-            D3, instance_params["min_poly_coef"], instance_params["max_poly_coef"])
-        q2 = matrix_tools.generate_random_polynomial(
-            D4, instance_params["min_poly_coef"], instance_params["max_poly_coef"])
-        v = instance_params["ring"].mul(instance_params["ring"].calc_poly(
-            q1, A), instance_params["ring"].calc_poly(q2, B))
-        KA = instance_params["ring"].mul(instance_params["ring"].calc_poly(
-            p1, A), instance_params["ring"].mul(v, instance_params["ring"].calc_poly(p2, B)))
-        KB = instance_params["ring"].mul(instance_params["ring"].calc_poly(
-            q1, A), instance_params["ring"].mul(u, instance_params["ring"].calc_poly(q2, B)))
+        R = instance_params["ring"]
+        dm = instance_params["min_poly_deg"]
+        dM = instance_params["max_poly_deg"]
+        mm = instance_params["min_matrix_elem"]
+        mM = instance_params["max_matrix_elem"]
+        cm = instance_params["min_poly_coef"]
+        cM = instance_params["max_poly_coef"]
+
+        D1 = randint(dm, dM)
+        D2 = randint(dm, dM)
+        D3 = randint(dm, dM)
+        D4 = randint(dm, dM)
+        A = generate_random_matrix(R, mm, mM)
+        B = generate_random_matrix(R, mm, mM)
+        L = generate_random_matrix(R, mm, mM)
+        p1 = generate_random_polynomial(D1, cm, cM)
+        p2 = generate_random_polynomial(D2, cm, cM)
+        q1 = generate_random_polynomial(D3, cm, cM)
+        q2 = generate_random_polynomial(D4, cm, cM)
+        u = R.mul(R.mul(R.calc_poly(p1, A), L), R.calc_poly(p2, B))
+        v = R.mul(R.mul(R.calc_poly(q1, A), L), R.calc_poly(q2, B))
+        KA = R.mul(R.calc_poly(p1, A), R.mul(v, R.calc_poly(p2, B)))
+        KB = R.mul(R.calc_poly(q1, A), R.mul(u, R.calc_poly(q2, B)))
 
         if KA != KB:
             return None
@@ -50,30 +48,60 @@ def perform_one_experiment(instance_params, attack_params):
         return {
             "A": A,
             "B": B,
+            "L": L,
             "u": u,
-            "v": v,
-            "K": KA
-        }
+            "v": v
+        }, KA
 
     def run_attack(attack_params, instance):
-        def compute_base_element(i, j):
-            return matrix_tools.minus_matrix_from_matrix(attack_params["ring"].mul(attack_params["ring"].pwr(instance["A"], i), attack_params["ring"].pwr(instance["B"], j)), instance["u"])
+        R = attack_params["ring"]
+        db = attack_params["poly_deg_bound"]
+        A = instance["A"]
+        B = instance["B"]
+        u = instance["u"]
+        L = instance["L"]
 
         def get_degree_bound(A):
-            d = matrix_tools.get_first_repeated(
-                attack_params["ring"], A, attack_params["poly_deg_bound"])
+            d = get_first_repeated(R, A, db)
             if d:
                 return d
-            return attack_params["poly_deg_bound"]
+            return db
 
-        d1 = get_degree_bound(instance["A"])
-        d2 = get_degree_bound(instance["B"])
+        d1 = get_degree_bound(A)
+        d2 = get_degree_bound(B)
+
+        cache_Ai = dict()
+        cache_Bj = dict()
+
+        cache_Ai[0] = R.one()
+        cache_Ai[1] = A
+        for i in range(2, d1 + 1):
+            cache_Ai[i] = R.mul(cache_Ai[i - 1], A)
+
+        cache_AiL = dict()
+
+        cache_Bj[0] = R.one()
+        cache_Bj[1] = B
+        for j in range(2, d2 + 1):
+            cache_Bj[j] = R.mul(cache_Bj[j - 1], B)
+
+        def compute_base_element(i, j):
+            if i not in cache_AiL:
+                cache_AiL[i] = R.mul(cache_Ai[i], L)
+            return subtract_matrix_from_matrix(R.mul(cache_AiL[i], cache_Bj[j]), u)
+
         return attack.apply_attack(d1 + 1, d2 + 1, compute_base_element)
 
-    def check_key(instance_params, instance, result):
-        KC = instance_params["ring"].mul(instance_params["ring"].calc_poly(result[0], instance["A"]), instance_params["ring"].mul(
-            instance["v"], instance_params["ring"].calc_poly(result[1], instance["B"])))
-        return instance["K"] == KC
+    def check_key(attack_params, instance, key, result):
+        R = attack_params["ring"]
+        A = instance["A"]
+        B = instance["B"]
+        v = instance["v"]
+
+        KC = R.mul(R.calc_poly(result[0], A),
+                   R.mul(v, R.calc_poly(result[1], B)))
+
+        return key == KC
 
     return test_tools.perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key)
 

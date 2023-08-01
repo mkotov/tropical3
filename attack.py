@@ -7,7 +7,7 @@ import math
 import time
 import functools
 import tropical_algebra
-import matrix_tools
+from matrix_tools import get_minimum_of_matrix
 import scipy.optimize
 import itertools
 import heapq
@@ -73,10 +73,10 @@ def get_compressed_covers(F):
 def make_matrices_for_simplex(M, S, d1, d2):
     """Returns matrices for simplex method."""
     c = [0 for _ in range(d1 + d2)]
-    Aub = []
-    bub = []
-    Aeq = []
-    beq = []
+    Aub = None
+    bub = None
+    Aeq = None
+    beq = None
 
     def vecij(i, j):
         v = [0 for _ in range(d1 + d2)]
@@ -87,10 +87,18 @@ def make_matrices_for_simplex(M, S, d1, d2):
     for i in range(d1):
         for j in range(d2):
             if (i, j) in S:
+                if not Aeq:
+                    Aeq = []
                 Aeq.append(vecij(i, j))
+                if not beq:
+                    beq = []
                 beq.append(M[(i, j)]['val'])
             else:
+                if not Aub:
+                    Aub = []
                 Aub.append(vecij(i, j))
+                if not bub:
+                    bub = []
                 bub.append(M[(i, j)]['val'])
     return c, Aub, bub, Aeq, beq
 
@@ -125,7 +133,7 @@ def enumerate_product_of_sets(W):
                 yield [W[i][s]]
             else:
                 return
-        elif len(W) > 0:
+        else:
             for t in range(min(s + 1, len(W[i]))):
                 for q in enumerate_product_of_sets_(W, s - t, i + 1):
                     yield [W[i][t]] + q
@@ -136,7 +144,7 @@ def enumerate_product_of_sets(W):
 
 
 def enumerate_covers(G):
-    for S in G:
+    for S in sorted(G, key=len):
         W = get_weighted_sets(S)
         yield from enumerate_product_of_sets(W)
 
@@ -148,18 +156,18 @@ def apply_attack(d1, d2, compute_base_element, bounds=(None, None)):
         return {'ijminval': [{'i': i, 'j': j, 'val': m['val']}], 'inds': m['inds']}
 
     def check_bound(m):
-        return not bounds[0] or M[m]['val'] <= -2 * bounds[0]
+        if bounds[0] and M[m]['val'] > -2 * bounds[0]:
+            return False
+        if bounds[1] and M[m]['val'] < -2 * bounds[1]:
+            return False
+        return True
 
-    M = {(i, j): matrix_tools.get_minimum_of_matrix(compute_base_element(i, j))
+    M = {(i, j): get_minimum_of_matrix(compute_base_element(i, j))
          for i in range(d1) for j in range(d2)}
     N = [repack(m[0], m[1], M[m]) for m in filter(check_bound, M)]
     G = get_compressed_covers(N)
-
     for S in enumerate_covers(G):
         c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
-        if len(Aub) == 0:
-            Aub = None
-            bub = None
 
         T = scipy.optimize.linprog(
             c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=bounds)
