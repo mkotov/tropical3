@@ -126,7 +126,7 @@ def get_arguments_parser():
     )
     parser.add_argument(
         "--max_matrix_param",
-        help="Lower bound to generate s and t",
+        help="Upper bound to generate s and t",
         required=True,
         type=int
     )
