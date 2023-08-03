@@ -117,7 +117,7 @@ def get_arguments_parser():
     )
     parser.add_argument(
         "--max_matrix_elem",
-        help="Lower bound to generate elements of matrices",
+        help="Upper bound to generate elements of matrices",
         required=True,
         type=int
     )
@@ -129,7 +129,7 @@ def get_arguments_parser():
     )
     parser.add_argument(
         "--max_matrix_param",
-        help="Lower bound to generate s and t",
+        help="Upper bound to generate s and t",
         required=True,
         type=int
     )
