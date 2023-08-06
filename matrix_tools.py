@@ -24,14 +24,17 @@ def subtract_matrix_from_matrix(A, B):
 
 def get_minimum_of_matrix(A):
     """Returns minimum of a matrix A and the set of corresponding indexes."""
-    best = {'val': A[0][0], 'inds': set()}
+    m = A[0][0]
+    inds = {(0, 0)}
+
     for i in range(len(A)):
         for j in range(len(A[i])):
-            if A[i][j] < best['val']:
-                best = {'val': A[i][j], 'inds': {(i, j)}}
-            elif A[i][j] == best['val']:
-                best['inds'].add((i, j))
-    return best
+            if A[i][j] < m:
+                m = A[i][j]
+                inds = {(i, j)}
+            elif A[i][j] == m:
+                inds.add((i, j))
+    return m, inds
 
 
 def is_matrix_minus_matrix_const(R, A, B):
