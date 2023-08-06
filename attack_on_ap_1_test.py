@@ -16,7 +16,6 @@ import test_tools
 from random import randint
 import argparse
 
-
 def perform_one_experiment(instance_params, attack_params):
     def generate_instance(instance_params):
         R = instance_params["ring"]

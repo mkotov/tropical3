@@ -4,8 +4,7 @@
 
 import time
 import multiprocess
-
-
+import random
 def perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key):
     """Runs one experiment: generates an instance, runs an attack, and check the obtained key."""
 
@@ -27,8 +26,8 @@ def test_suite(perform_one_experiment, instance_params, attack_params, number_of
     fl = 0
     for i in range(1, number_of_tests + 1):
         q = multiprocess.Queue()
-        p = multiprocess.Process(target=lambda q: q.put(
-            perform_one_experiment(instance_params, attack_params)), args=(q,))
+        p = multiprocess.Process(target=lambda q: [random.seed(i), q.put(
+            perform_one_experiment(instance_params, attack_params))], args=(q,))
         p.start()
         p.join(timeout)
         if p.is_alive():
