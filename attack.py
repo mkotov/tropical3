@@ -23,7 +23,7 @@ def compress(G):
         if i is None:
             H.append(S)
         else:
-            H[i].ijminval.extend(S.ijminval)
+            H[i].ijs.extend(S.ijs)
     return H
 
 
@@ -38,7 +38,7 @@ def get_sets_with_unique_elements(Z):
 
 
 def get_sets_without_elements(Z, N):
-    return list(filter(lambda S: len(S.inds) != 0, [IJMinValInds(S.ijminval, S.inds.difference(N)) for S in Z]))
+    return list(filter(lambda S: len(S.inds) != 0, [Cover(S.inds.difference(N), S.ijs) for S in Z]))
 
 
 def get_compressed_covers(F):
@@ -64,35 +64,35 @@ def compute_preweights(S, R):
     lins = {}
     cols = {}
     for T in S:
-        for p in T.ijminval:
-            i = p.i
-            j = p.j
+        for p in T.ijs:
+            i = p[0]
+            j = p[1]
             if not i in lins:
                 lins[i] = 0
             if not j in cols:
                 cols[j] = 0
             if T != R:
-                lins[i] += 1.0 / len(T.ijminval)
-                cols[j] += 1.0 / len(T.ijminval)
+                lins[i] += 1.0 / len(T.ijs)
+                cols[j] += 1.0 / len(T.ijs)
     return lins, cols
 
 
 def get_weighted_sets(S, solve_linprog):
     W = []
-    mandatory = [(T.ijminval[0].i, T.ijminval[0].j) for T in filter(lambda T: len(T.ijminval) == 1, S)]
+    mandatory = [(T.ijs[0][0], T.ijs[0][1]) for T in filter(lambda T: len(T.ijs) == 1, S)]
 
     for T in S:
         lins, cols = compute_preweights(S, T)
-        if len(T.ijminval) > 1:
+        if len(T.ijs) > 1:
             w = []
-            for p in T.ijminval:
-                i = p.i
-                j = p.j
+            for p in T.ijs:
+                i = p[0]
+                j = p[1]
                 if solve_linprog(mandatory + [(i, j)]):
                     w.append((i, j, (lins[i] + 1) * (cols[j] + 1)))
             W.append([(p[0], p[1]) for p in sorted(w, reverse=True, key=lambda x: x[2])])
         else:
-            W.append([(T.ijminval[0].i, T.ijminval[0].j)])
+            W.append([(T.ijs[0][0], T.ijs[0][1])])
 
     return W
 
@@ -142,15 +142,10 @@ def enumerate_product_of_sets(W):
         yield from enumerate_product_of_sets_(W, s, 0)
 
 
-class IJMinVal:
-    def __init__(self, i, j):
-        self.i = i
-        self.j = j
-
-class IJMinValInds:
-    def __init__(self, ijminval, inds):
-        self.ijminval = ijminval
+class Cover:
+    def __init__(self, inds, ijs):
         self.inds = inds
+        self.ijs = ijs
 
 def apply_attack(d1, d2, compute_base_element, bounds=(None, None)):
     """Applies our attack. Returns two polynomials p' and q'."""
@@ -162,7 +157,7 @@ def apply_attack(d1, d2, compute_base_element, bounds=(None, None)):
            m, inds = get_minimum_of_matrix(compute_base_element(i, j))
            M[(i, j)] = m
            if (not bounds[0] or m <= -2 * bounds[0]) and (not bounds[1] or m >= -2 * bounds[1]):
-               I.append(IJMinValInds([IJMinVal(i, j)], inds))
+               I.append(Cover(inds, [(i, j)]))
 
     G = get_compressed_covers(I)
 
