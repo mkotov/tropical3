@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python3 attack_on_d_test.py \
+python3 attack_on_d.py \
   --count=10 \
   --timeout=60 \
   --size=10 \

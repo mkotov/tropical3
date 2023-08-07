@@ -1,155 +1,72 @@
 """
 (c) I. Buchinskiy, M. Kotov, A. Treier, 2023.
-
-An attack on Protocol 1 from Huang, Li, and Deng, "Public-Key Cryptography Based on Tropical Circular Matrices", Applied Sciences, 12.15 (2022): 7401.
 """
 
+import unittest
+import attack_on_hld
 import tropical_algebra
-from matrix_tools import generate_random_matrix
-from matrix_tools import generate_random_upper_t_circulant_matrix
-from matrix_tools import generate_upper_t_circulant_matrix
-from matrix_tools import mul_basis_upper_t_circulant_matrix_and_matrix
-from matrix_tools import mul_matrix_and_basis_upper_t_circulant_matrix
-from matrix_tools import subtract_matrix_from_matrix
-import attack
-import test_tools
-from random import randint
-import argparse
+import matrix_tools
 
 
-def perform_one_experiment(instance_params, attack_params):
-    def generate_instance(instance_params):
-        R = instance_params["ring"]
-        mm = instance_params["min_matrix_elem"]
-        mM = instance_params["max_matrix_elem"]
-        sm = instance_params["min_matrix_param"]
-        sM = instance_params["max_matrix_param"]
+class TestTropicalAlgebra(unittest.TestCase):
+    def test_attack(self):
+        R = tropical_algebra.MatrixSemiring(
+            tropical_algebra.R_min_plus(), 5)
+        attack_params = {
+            "ring": R,
+            "min_matrix_elem": 0,
+            "max_matrix_elem": 2**15,
+        }
 
-        s = randint(sm, sM)
-        t = randint(sm, sM)
-        Y = generate_random_matrix(R, mm, mM)
-        P1 = generate_random_upper_t_circulant_matrix(R, s, mm, mM)
-        Q1 = generate_random_upper_t_circulant_matrix(R, t, mm, mM)
-        P2 = generate_random_upper_t_circulant_matrix(R, s, mm, mM)
-        Q2 = generate_random_upper_t_circulant_matrix(R, t, mm, mM)
-        Ka = R.mul(P1, R.mul(Y, Q1))
-        Kb = R.mul(P2, R.mul(Y, Q2))
-        KA = R.mul(P1, R.mul(Kb, Q1))
-        KB = R.mul(P2, R.mul(Ka, Q2))
-        if KA != KB:
-            return None
+        s = t = 9361
 
-        return {
+        Y = [
+            [8630, 29391, 21921, 18968, 25014],
+            [15306, 5461, 18973, 800, 1786],
+            [7986, 27430, 22510, 11233, 30900],
+            [2398, 6071, 25269, 27186, 4328],
+            [18306, 10527, 16873, 11565, 9569]
+        ]
+
+        Ka = [
+            [26578, 19555, 38342, 32846, 29893],
+            [3350, 25959, 16386, 21160, 11725],
+            [24783, 18911, 30607, 33184, 22158],
+            [5892, 13323, 16996, 23702, 26279],
+            [11133, 29231, 21452, 27798, 21563]
+        ]
+
+        Kb = [
+            [18245, 27756, 29434, 23095, 24081],
+            [18102, 15076, 16754, 10415, 11401],
+            [17601, 18918, 20596, 14257, 15243],
+            [12013, 15686, 31029, 20282, 13943],
+            [15855, 19528, 26488, 21180, 17785],
+        ]
+
+        instance = {
             "Y": Y,
             "s": s,
             "t": t,
             "Ka": Ka,
-            "Kb": Kb,
-        }, KA
+            "Kb": Kb
+        }
 
-    def run_attack(attack_params, instance):
-        R = attack_params["ring"]
-        mm = attack_params["min_matrix_elem"]
-        mM = attack_params["max_matrix_elem"]
-        n = R.size()
+        K = [
+            [25645, 29170, 38681, 40359, 34020],
+            [12965, 29027, 26001, 27679, 21340],
+            [16807, 28526, 29843, 31521, 25182],
+            [15507, 22938, 26611, 33317, 31207],
+            [19349, 26780, 30453, 37159, 31178]
+        ]
 
-        s = instance["s"]
-        t = instance["t"]
-        Y = instance["Y"]
-        Ka = instance["Ka"]
+        result = attack_on_hld.run_attack(attack_params, instance)
+        P = matrix_tools.generate_upper_t_circulant_matrix(R, result[0], s)
+        Q = matrix_tools.generate_upper_t_circulant_matrix(R, result[1], t)
 
-        cache_Bi_mul_Y = dict()
-
-        def compute_base_element(i, j):
-            if i not in cache_Bi_mul_Y:
-                cache_Bi_mul_Y[i] = mul_basis_upper_t_circulant_matrix_and_matrix(
-                    R, s, i, Y)
-            return subtract_matrix_from_matrix(mul_matrix_and_basis_upper_t_circulant_matrix(R, t, j, cache_Bi_mul_Y[i]), Ka)
-
-        return attack.apply_attack(n, n, compute_base_element, bounds=(mm, mM))
-
-    def check_key(attack_params, instance, key, result):
-        R = attack_params["ring"]
-        s = instance["s"]
-        t = instance["t"]
-        Kb = instance["Kb"]
-
-        P = generate_upper_t_circulant_matrix(R, result[0], s)
-        Q = generate_upper_t_circulant_matrix(R, result[1], t)
-
-        KC = R.mul(R.mul(P, Kb), Q)
-
-        return key == KC
-
-    return test_tools.perform_one_experiment(instance_params, attack_params, generate_instance, run_attack, check_key)
-
-
-def get_arguments_parser():
-    parser = argparse.ArgumentParser(
-        description="The script to check the attack.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument(
-        "--count",
-        help="Number of tests",
-        required=True,
-        type=int
-    )
-    parser.add_argument(
-        "--size",
-        help="Size of matrices",
-        required=True,
-        type=int
-    )
-    parser.add_argument(
-        "--timeout",
-        help="Timeout for each experiment",
-        required=True,
-        type=int
-    )
-    parser.add_argument(
-        "--min_matrix_elem",
-        help="Lower bound to generate elements of matrices",
-        required=True,
-        type=int
-    )
-    parser.add_argument(
-        "--max_matrix_elem",
-        help="Upper bound to generate elements of matrices",
-        required=True,
-        type=int
-    )
-    parser.add_argument(
-        "--min_matrix_param",
-        help="Lower bound to generate s and t",
-        required=True,
-        type=int
-    )
-    parser.add_argument(
-        "--max_matrix_param",
-        help="Lower bound to generate s and t",
-        required=True,
-        type=int
-    )
-
-    return parser
+        self.assertEqual(Ka, R.mul(R.mul(P, Y), Q))
+        self.assertEqual(K, R.mul(R.mul(P, Kb), Q))
 
 
 if __name__ == "__main__":
-    args = get_arguments_parser().parse_args()
-    R = tropical_algebra.MatrixSemiring(
-        tropical_algebra.R_min_plus(), args.size)
-
-    test_tools.test_suite(perform_one_experiment,
-                          {
-                              "ring": R,
-                              "min_matrix_elem": args.min_matrix_elem,
-                              "max_matrix_elem": args.max_matrix_elem,
-                              "min_matrix_param": args.min_matrix_param,
-                              "max_matrix_param": args.max_matrix_param,
-                          },
-                          {
-                              "ring": R,
-                              "min_matrix_elem": args.min_matrix_elem,
-                              "max_matrix_elem": args.max_matrix_elem,
-                          },
-                          args.count, args.timeout)
+    unittest.main()

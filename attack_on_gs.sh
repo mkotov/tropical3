@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python3 attack_on_gs_test.py \
+python3 attack_on_gs.py \
   --count=10 \
   --timeout=60 \
   --size=10 \

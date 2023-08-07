@@ -174,7 +174,7 @@ def generate_anti_t_p_circulant_matrix(R, c_1, t, p):
     """Generates an anti-t-p-circulant matrix of size n x n by its first element."""
     n = R.size()
     one = R.semiring.one()
-    array = [c_1 + p * i for i in range(n)]
+    array = [c_1 - p * i for i in range(n)]
     return [[R.semiring.mul(array[(i - j + n) % n], t if i + j != n - 1 else one) for j in range(n)] for i in range(n)]
 
 

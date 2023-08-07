@@ -101,7 +101,7 @@ class TestTropicalAlgebra(unittest.TestCase):
 
     def test_generate_anti_t_p_circulant_matrix(self):
         R = tropical_algebra.MatrixSemiring(tropical_algebra.R_min_plus(), 3)
-        A = matrix_tools.generate_anti_t_p_circulant_matrix(R, 1, 10, 100)
+        A = matrix_tools.generate_anti_t_p_circulant_matrix(R, 1, 10, -100)
         R = [
             [11, 211, 101],
             [111, 1, 211],
@@ -109,6 +109,29 @@ class TestTropicalAlgebra(unittest.TestCase):
         ]
 
         self.assertEqual(R, A)
+
+    def test_anti_circulant_matrix(self):
+        R = tropical_algebra.MatrixSemiring(
+            tropical_algebra.R_min_plus(), 3)
+        s = -71
+        t = -98876
+        p = 2
+
+        P1 = [
+            [-12272, -12276, -12203],
+            [-12274, -12201, -12276],
+            [-12205, -12274, -12272]
+        ]
+        self.assertEqual(
+            P1, matrix_tools.generate_anti_t_p_circulant_matrix(R, -12201, s, p))
+
+        Q1 = [
+            [-100958, -100962, -2084],
+            [-100960, -2082, -100962],
+            [-2086, -100960, -100958]
+        ]
+        self.assertEqual(
+            Q1, matrix_tools.generate_anti_t_p_circulant_matrix(R, -2082, t, p))
 
 
 if __name__ == "__main__":
