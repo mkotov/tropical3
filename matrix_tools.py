@@ -24,14 +24,17 @@ def subtract_matrix_from_matrix(A, B):
 
 def get_minimum_of_matrix(A):
     """Returns minimum of a matrix A and the set of corresponding indexes."""
-    best = {'val': A[0][0], 'inds': set()}
+    m = A[0][0]
+    inds = {(0, 0)}
+
     for i in range(len(A)):
         for j in range(len(A[i])):
-            if A[i][j] < best['val']:
-                best = {'val': A[i][j], 'inds': {(i, j)}}
-            elif A[i][j] == best['val']:
-                best['inds'].add((i, j))
-    return best
+            if A[i][j] < m:
+                m = A[i][j]
+                inds = {(i, j)}
+            elif A[i][j] == m:
+                inds.add((i, j))
+    return m, inds
 
 
 def is_matrix_minus_matrix_const(R, A, B):
@@ -171,7 +174,7 @@ def generate_anti_t_p_circulant_matrix(R, c_1, t, p):
     """Generates an anti-t-p-circulant matrix of size n x n by its first element."""
     n = R.size()
     one = R.semiring.one()
-    array = [c_1 + p * i for i in range(n)]
+    array = [c_1 - p * i for i in range(n)]
     return [[R.semiring.mul(array[(i - j + n) % n], t if i + j != n - 1 else one) for j in range(n)] for i in range(n)]
 
 

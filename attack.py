@@ -2,131 +2,128 @@
 (c) I. Buchinskiy, M. Kotov, A. Treier, 2023
 """
 
-import random
-import math
-import time
-import functools
-import tropical_algebra
 from matrix_tools import get_minimum_of_matrix
 import scipy.optimize
-import itertools
 import heapq
-
-
-def compress(G):
-    """Compresses a set of pair [a1, L1], [a2, L2], ..., [an, Ln] to the set of pair, where all first components are unique."""
-
-    def find(H, S):
-        for i in range(len(H)):
-            if S['inds'] == H[i]['inds']:
-                return i
-        return None
-
-    H = []
-    for S in G:
-        i = find(H, S)
-        if i is None:
-            H.append(S)
-        else:
-            H[i]['ijminval'].extend(S['ijminval'])
-    return H
-
-
-def unite_sets(ss):
-    """Unites a collection of sets."""
-    if len(ss) == 0:
-        return set()
-    return set.union(*ss)
-
-
-def get_sets_with_unique_elements(Z):
-    """Returns sets that has unique elements."""
-    return list(
-        filter(lambda S: len(S['inds'].difference(unite_sets([T['inds'] for T in filter(lambda T: S != T, Z)]))) != 0,
-               Z))
-
-
-def get_sets_without_elements(Z, N):
-    return list(filter(lambda S: len(S['inds']) != 0, [{
-        'ijminval': S['ijminval'], 'inds': S['inds'].difference(N)} for S in Z]))
+import multiprocessing
 
 
 def get_compressed_covers(F):
     """Returns the compressed set of covers."""
+
+    def compress(G):
+        """Compresses a set of pair [a1, L1], [a2, L2], ..., [an, Ln] to the set of pair, where all first components are unique."""
+
+        def find(H, S):
+            for i in range(len(H)):
+                if S.inds == H[i].inds:
+                    return i
+            return None
+
+        H = []
+        for S in G:
+            i = find(H, S)
+            if i is None:
+                H.append(S)
+            else:
+                H[i].ijs.update(S.ijs)
+        return H
+
+    def unite_sets(ss):
+        """Unites a collection of sets."""
+        return set() if len(ss) == 0 else set.union(*ss)
+
+    def get_sets_with_unique_elements(Z):
+        """Returns sets that has unique elements."""
+        return list(filter(lambda S: len(S.inds.difference(unite_sets([T.inds for T in filter(lambda T: S != T, Z)]))) != 0, Z))
+
+    def get_sets_without_elements(Z, N):
+        """Returns sets without elements."""
+        return list(filter(lambda S: len(S.inds) != 0, [Cover(S.inds.difference(N), S.ijs) for S in Z]))
+
     if len(F) == 0:
         return [[]]
     Z = compress(F)
     M = get_sets_with_unique_elements(Z)
-    P = get_sets_without_elements(Z, unite_sets([S['inds'] for S in M]))
-    P.sort(key=lambda S: len(S['inds']), reverse=True)
-
+    P = get_sets_without_elements(Z, unite_sets([S.inds for S in M]))
     if len(P) == 0:
         return [M]
 
+    P.sort(key=lambda S: len(S.inds), reverse=True)
+
     X = [[P[0]] + S for S in get_compressed_covers(
-        get_sets_without_elements(P[1:], P[0]['inds']))]
+        get_sets_without_elements(P[1:], P[0].inds))]
     Y = get_compressed_covers(P[1:])
 
     return [M + S for S in X + Y]
 
 
-def make_matrices_for_simplex(M, S, d1, d2):
-    """Returns matrices for simplex method."""
-    c = [0 for _ in range(d1 + d2)]
-    Aub = None
-    bub = None
-    Aeq = None
-    beq = None
-
-    def vecij(i, j):
-        v = [0 for _ in range(d1 + d2)]
-        v[i] = -1
-        v[d1 + j] = -1
-        return v
-
-    for i in range(d1):
-        for j in range(d2):
-            if (i, j) in S:
-                if not Aeq:
-                    Aeq = []
-                Aeq.append(vecij(i, j))
-                if not beq:
-                    beq = []
-                beq.append(M[(i, j)]['val'])
-            else:
-                if not Aub:
-                    Aub = []
-                Aub.append(vecij(i, j))
-                if not bub:
-                    bub = []
-                bub.append(M[(i, j)]['val'])
-    return c, Aub, bub, Aeq, beq
-
-
-def get_weighted_sets(S):
+def compute_preweights(S, R):
     lins = {}
-    for T in S:
-        for p in T['ijminval']:
-            if not p['i'] in lins:
-                lins[p['i']] = 0
-            lins[p['i']] += 1.0 / len(T['ijminval'])
     cols = {}
     for T in S:
-        for p in T['ijminval']:
-            if not p['j'] in cols:
-                cols[p['j']] = 0
-            cols[p['j']] += 1.0 / len(T['ijminval'])
+        for p in T.ijs:
+            i = p[0]
+            j = p[1]
+            if not i in lins:
+                lins[i] = 0
+            if not j in cols:
+                cols[j] = 0
+            if T != R:
+                lins[i] += 1.0 / len(T.ijs)
+                cols[j] += 1.0 / len(T.ijs)
+    return lins, cols
+
+
+def get_weighted_sets(S, solve_linprog):
     W = []
+    mandatory = [next(iter(T.ijs))
+                 for T in filter(lambda T: len(T.ijs) == 1, S)]
+
     for T in S:
-        w = []
-        for p in T['ijminval']:
-            w.append((p['i'], p['j'], lins[p['i']] * cols[p['j']]))
-        W.append([(p[0], p[1])
-                  for p in sorted(w, reverse=True, key=lambda x: x[2])])
+        lins, cols = compute_preweights(S, T)
+        if len(T.ijs) > 1:
+            w = []
+            for p in T.ijs:
+                if solve_linprog(mandatory + [p]):
+                    w.append([p, (lins[p[0]] + 1) * (cols[p[1]] + 1)])
+            W.append([p[0]
+                     for p in sorted(w, reverse=True, key=lambda x: x[1])])
+        else:
+            W.append([next(iter(T.ijs))])
+
     return W
 
 
+def enumerate_with_queue(E, chunk_size=10):
+    """Enumerates elements using a priority queue with heuristics."""
+
+    def heuristics_to_sort(S):
+        def sum_of_cross(S, i, j):
+            lins = sum(1 if s[0] == i else 0 for s in S)
+            cols = sum(1 if s[1] == j else 0 for s in S)
+            return lins * cols
+
+        return -sum(sum_of_cross(S, s[0], s[1])**2 for s in S)
+
+    q = []
+    while True:
+        k = 0
+        for e in E:
+            heapq.heappush(q, (heuristics_to_sort(e), e))
+            k += 1
+            if k == chunk_size:
+                break
+
+        if len(q) == 0:
+            break
+
+        r = heapq.heappop(q)
+        yield r[1]
+
+
 def enumerate_product_of_sets(W):
+    """Enumerates the Cartesian product of sets trying to yield heavier tuples sooner."""
     def enumerate_product_of_sets_(W, s, i):
         if i == len(W) - 1:
             if s < len(W[i]):
@@ -143,34 +140,74 @@ def enumerate_product_of_sets(W):
         yield from enumerate_product_of_sets_(W, s, 0)
 
 
-def enumerate_covers(G):
-    for S in sorted(G, key=len):
-        W = get_weighted_sets(S)
-        yield from enumerate_product_of_sets(W)
+class Cover:
+    def __init__(self, inds, ijs):
+        self.inds = inds
+        self.ijs = ijs
 
 
 def apply_attack(d1, d2, compute_base_element, bounds=(None, None)):
     """Applies our attack. Returns two polynomials p' and q'."""
 
-    def repack(i, j, m):
-        return {'ijminval': [{'i': i, 'j': j, 'val': m['val']}], 'inds': m['inds']}
+    M = dict()
+    I = []
+    for i in range(d1):
+        for j in range(d2):
+            m, inds = get_minimum_of_matrix(compute_base_element(i, j))
+            M[(i, j)] = m
+            if (not bounds[0] or m <= -2 * bounds[0]) and (not bounds[1] or m >= -2 * bounds[1]):
+                I.append(Cover(inds, {(i, j)}))
 
-    def check_bound(m):
-        if bounds[0] and M[m]['val'] > -2 * bounds[0]:
-            return False
-        if bounds[1] and M[m]['val'] < -2 * bounds[1]:
-            return False
-        return True
+    G = get_compressed_covers(I)
 
-    M = {(i, j): get_minimum_of_matrix(compute_base_element(i, j))
-         for i in range(d1) for j in range(d2)}
-    N = [repack(m[0], m[1], M[m]) for m in filter(check_bound, M)]
-    G = get_compressed_covers(N)
-    for S in enumerate_covers(G):
-        c, Aub, bub, Aeq, beq = make_matrices_for_simplex(M, S, d1, d2)
+    def solve_linprog(S):
+        """Solves the linear program corresponding to cover S."""
 
+        def make_matrices_for_linprog(S):
+            """Returns matrices for simplex method."""
+            c = [0 for _ in range(d1 + d2)]
+            Aub = []
+            bub = []
+            Aeq = []
+            beq = []
+
+            for i in range(d1):
+                for j in range(d2):
+                    v = [-1 if k == i or k == d1 +
+                         j else 0 for k in range(d1 + d2)]
+                    m = M[(i, j)]
+                    if (i, j) in S:
+                        Aeq.append(v)
+                        beq.append(m)
+                    else:
+                        Aub.append(v)
+                        bub.append(m)
+
+            if Aub == []:
+                Aub = None
+                bub = None
+            if Aeq == []:
+                Aeq = None
+                beq = None
+
+            return c, Aub, bub, Aeq, beq
+
+        c, Aub, bub, Aeq, beq = make_matrices_for_linprog(S)
         T = scipy.optimize.linprog(
             c, A_ub=Aub, b_ub=bub, A_eq=Aeq, b_eq=beq, bounds=bounds)
         if T.success:
             return [[T.x[i] for i in range(d1)], [T.x[d1 + i] for i in range(d2)]]
+
+    def enumerate_covers(G):
+        """Enumerated covers generated from weighted sets."""
+
+        for S in sorted(G, key=len):
+            W = get_weighted_sets(S, solve_linprog)
+            yield from enumerate_with_queue(enumerate_product_of_sets(W))
+
+    for S in enumerate_covers(G):
+        result = solve_linprog(S)
+        if result:
+            return result
+
     return None
