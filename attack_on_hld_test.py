@@ -67,6 +67,6 @@ class TestTropicalAlgebra(unittest.TestCase):
         self.assertEqual(Ka, R.mul(R.mul(P, Y), Q))
         self.assertEqual(K, R.mul(R.mul(P, Kb), Q))
 
-
+        
 if __name__ == "__main__":
     unittest.main()

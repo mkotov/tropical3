@@ -26,6 +26,7 @@ def test_suite(perform_one_experiment, instance_params, attack_params, number_of
     st = time.time()
     ok = 0
     fl = 0
+    fl_by_timeout = 0
     for i in range(1, number_of_tests + 1):
         q = multiprocess.Queue()
         p = multiprocess.Process(target=lambda q: [random.seed(i), q.put(
@@ -36,7 +37,7 @@ def test_suite(perform_one_experiment, instance_params, attack_params, number_of
             print("TIMEOUT")
             p.terminate()
             p.join()
-            fl += 1
+            fl_by_timeout += 1
         elif q.get():
             print("OK")
             ok += 1
@@ -44,6 +45,9 @@ def test_suite(perform_one_experiment, instance_params, attack_params, number_of
             print("FAIL")
             fl += 1
     et = time.time()
-    print(et - st)
+    diff_time = et - st
+    print("Total time: ", diff_time)
+    print("Average time: ", diff_time / number_of_tests)
     print("OK: ", ok)
     print("FAIL: ", fl)
+    print("FAIL (BY TIMEOUT): ", fl_by_timeout)
