@@ -8,50 +8,48 @@ import heapq
 import multiprocessing
 
 
-def compress(G):
-    """Compresses a set of pair [a1, L1], [a2, L2], ..., [an, Ln] to the set of pair, where all first components are unique."""
-
-    def find(H, S):
-        for i in range(len(H)):
-            if S.inds == H[i].inds:
-                return i
-        return None
-
-    H = []
-    for S in G:
-        i = find(H, S)
-        if i is None:
-            H.append(S)
-        else:
-            H[i].ijs.extend(S.ijs)
-    return H
-
-
-def unite_sets(ss):
-    """Unites a collection of sets."""
-    return set() if len(ss) == 0 else set.union(*ss)
-
-
-def get_sets_with_unique_elements(Z):
-    """Returns sets that has unique elements."""
-    return list(filter(lambda S: len(S.inds.difference(unite_sets([T.inds for T in filter(lambda T: S != T, Z)]))) != 0, Z))
-
-
-def get_sets_without_elements(Z, N):
-    return list(filter(lambda S: len(S.inds) != 0, [Cover(S.inds.difference(N), S.ijs) for S in Z]))
-
-
 def get_compressed_covers(F):
     """Returns the compressed set of covers."""
+
+    def compress(G):
+        """Compresses a set of pair [a1, L1], [a2, L2], ..., [an, Ln] to the set of pair, where all first components are unique."""
+
+        def find(H, S):
+            for i in range(len(H)):
+                if S.inds == H[i].inds:
+                    return i
+            return None
+
+        H = []
+        for S in G:
+            i = find(H, S)
+            if i is None:
+                H.append(S)
+            else:
+                H[i].ijs.update(S.ijs)
+        return H
+
+    def unite_sets(ss):
+        """Unites a collection of sets."""
+        return set() if len(ss) == 0 else set.union(*ss)
+
+    def get_sets_with_unique_elements(Z):
+        """Returns sets that has unique elements."""
+        return list(filter(lambda S: len(S.inds.difference(unite_sets([T.inds for T in filter(lambda T: S != T, Z)]))) != 0, Z))
+
+    def get_sets_without_elements(Z, N):
+        """Returns sets without elements."""
+        return list(filter(lambda S: len(S.inds) != 0, [Cover(S.inds.difference(N), S.ijs) for S in Z]))
+
     if len(F) == 0:
         return [[]]
     Z = compress(F)
     M = get_sets_with_unique_elements(Z)
     P = get_sets_without_elements(Z, unite_sets([S.inds for S in M]))
-    P.sort(key=lambda S: len(S.inds), reverse=True)
-
     if len(P) == 0:
         return [M]
+
+    P.sort(key=lambda S: len(S.inds), reverse=True)
 
     X = [[P[0]] + S for S in get_compressed_covers(
         get_sets_without_elements(P[1:], P[0].inds))]
@@ -79,20 +77,20 @@ def compute_preweights(S, R):
 
 def get_weighted_sets(S, solve_linprog):
     W = []
-    mandatory = [(T.ijs[0][0], T.ijs[0][1]) for T in filter(lambda T: len(T.ijs) == 1, S)]
+    mandatory = [next(iter(T.ijs))
+                 for T in filter(lambda T: len(T.ijs) == 1, S)]
 
     for T in S:
         lins, cols = compute_preweights(S, T)
         if len(T.ijs) > 1:
             w = []
             for p in T.ijs:
-                i = p[0]
-                j = p[1]
-                if solve_linprog(mandatory + [(i, j)]):
-                    w.append((i, j, (lins[i] + 1) * (cols[j] + 1)))
-            W.append([(p[0], p[1]) for p in sorted(w, reverse=True, key=lambda x: x[2])])
+                if solve_linprog(mandatory + [p]):
+                    w.append([p, (lins[p[0]] + 1) * (cols[p[1]] + 1)])
+            W.append([p[0]
+                     for p in sorted(w, reverse=True, key=lambda x: x[1])])
         else:
-            W.append([(T.ijs[0][0], T.ijs[0][1])])
+            W.append([next(iter(T.ijs))])
 
     return W
 
@@ -147,17 +145,18 @@ class Cover:
         self.inds = inds
         self.ijs = ijs
 
+
 def apply_attack(d1, d2, compute_base_element, bounds=(None, None)):
     """Applies our attack. Returns two polynomials p' and q'."""
 
     M = dict()
     I = []
     for i in range(d1):
-       for j in range(d2):
-           m, inds = get_minimum_of_matrix(compute_base_element(i, j))
-           M[(i, j)] = m
-           if (not bounds[0] or m <= -2 * bounds[0]) and (not bounds[1] or m >= -2 * bounds[1]):
-               I.append(Cover(inds, [(i, j)]))
+        for j in range(d2):
+            m, inds = get_minimum_of_matrix(compute_base_element(i, j))
+            M[(i, j)] = m
+            if (not bounds[0] or m <= -2 * bounds[0]) and (not bounds[1] or m >= -2 * bounds[1]):
+                I.append(Cover(inds, {(i, j)}))
 
     G = get_compressed_covers(I)
 
